@@ -319,3 +319,6 @@ JAZZMIN_UI_TWEAKS = {
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+CSRF_TRUSTED_ORIGINS = [
+    "https://abicarehospital-production.up.railway.app",
+]
