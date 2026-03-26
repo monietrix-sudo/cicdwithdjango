@@ -66,15 +66,15 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { height: 100%; scroll-behavior: smooth; }
     body {
-      font-family: var(--font-body);
-     background-image: url('abicare-logop.jpg');
-      color: var(--text-primary);
-      min-height: 100vh;
-      display: flex;
-      overflow-x: hidden;
-      font-size: 15px;
-      line-height: 1.6;
-    }
+    font-family: 'DM Sans', sans-serif;
+    background-image: url("{% static 'images/abicare-background.jpg' %}");
+    background-size: cover;
+    background-position: center center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    color: var(--text-dark);
+    min-height: 100vh;
+}
 
     /* ── SIDEBAR ────────────────────────────────────────────────── */
     .sidebar {
