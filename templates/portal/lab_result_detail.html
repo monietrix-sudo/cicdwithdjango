@@ -1,0 +1,49 @@
+{% extends "portal/base_portal.html" %}
+{% block content %}
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+  <a href="{% url 'portal:lab_results' %}" style="color:var(--muted);text-decoration:none;font-size:13px;">
+    <i class="fas fa-arrow-left"></i> Back to Results
+  </a>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-header">
+    <div class="icon" style="background:#E6FFFA;color:var(--accent);"><i class="fas fa-flask"></i></div>
+    <div>
+      <h2>{{ result.template.name|default:"Lab Result" }}</h2>
+      <div style="font-size:12px;color:var(--muted);">{{ result.ordered_at|date:"D, M d Y" }}</div>
+    </div>
+    <span class="badge badge-green" style="margin-left:auto;">Released</span>
+  </div>
+  <div class="card-body">
+    {% if result.template and result.template.template_type == 'scratch' %}
+      {% if result.result_values %}
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <thead>
+          <tr style="background:#F7FAFC;">
+            <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">Test</th>
+            <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">Result</th>
+            <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">Normal Range</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for field in result.template.fields %}
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px 12px;">{{ field.name }}{% if field.unit %} ({{ field.unit }}){% endif %}</td>
+            <td style="padding:8px 12px;font-weight:700;">{{ result.result_values_json }}</td>
+            <td style="padding:8px 12px;color:var(--muted);">{{ field.normal_range|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="color:var(--muted);font-size:14px;">Result values are being processed.</p>
+      {% endif %}
+    {% else %}
+    <p style="color:var(--muted);font-size:14px;">
+      Your result is available. Please visit the hospital to collect a printed copy or ask your doctor to share the details with you.
+    </p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

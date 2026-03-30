@@ -1,0 +1,115 @@
+{% extends "portal/base_portal.html" %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <h1 style="font-size:22px;font-weight:800;color:var(--dark);">My Medical Records</h1>
+  <p style="font-size:13px;color:var(--muted);margin-top:4px;">
+    Records shown here have been reviewed and approved for you by your doctor.
+  </p>
+</div>
+
+{% if encounters %}
+{% for encounter in encounters %}
+<div class="card" style="margin-bottom:16px;border-left:4px solid {% if encounter.encounter_type == 'inpatient' %}var(--primary){% elif encounter.encounter_type == 'emergency' %}#E53E3E{% else %}var(--accent){% endif %};">
+
+  <div class="card-header" style="flex-wrap:wrap;gap:8px;">
+    <div class="icon" style="background:{% if encounter.encounter_type == 'inpatient' %}#EBF4FF;color:var(--primary){% elif encounter.encounter_type == 'emergency' %}#FFF5F5;color:#E53E3E{% else %}#E6FFFA;color:var(--accent){% endif %};">
+      <i class="fas {% if encounter.encounter_type == 'inpatient' %}fa-bed{% elif encounter.encounter_type == 'emergency' %}fa-ambulance{% else %}fa-stethoscope{% endif %}"></i>
+    </div>
+    <div style="flex:1;">
+      <h2 style="font-size:15px;">{{ encounter.get_encounter_type_display }}</h2>
+      <div style="font-size:12px;color:var(--muted);">
+        {{ encounter.encounter_date|date:"D, M d Y" }}
+        {% if encounter.discharge_date %} → Discharged {{ encounter.discharge_date|date:"M d Y" }}{% endif %}
+        {% if encounter.consultant_display %} · {{ encounter.consultant_display }}{% endif %}
+      </div>
+    </div>
+    <span class="badge badge-{% if encounter.status == 'discharged' %}green{% elif encounter.status == 'active' %}red{% else %}gray{% endif %}">
+      {{ encounter.get_status_display }}
+    </span>
+  </div>
+
+  <div class="card-body">
+
+    <!-- Inpatient summary -->
+    {% if encounter.ward_admitted %}
+    <div style="display:flex;gap:16px;flex-wrap:wrap;background:var(--bg);border-radius:8px;
+                padding:10px 14px;font-size:13px;margin-bottom:14px;">
+      <div><span style="color:var(--muted);">Ward:</span> <strong>{{ encounter.get_ward_admitted_display }}</strong></div>
+      {% if encounter.bed_number %}<div><span style="color:var(--muted);">Bed:</span> <strong>{{ encounter.bed_number }}</strong></div>{% endif %}
+      {% if encounter.length_of_stay is not None %}
+      <div><span style="color:var(--muted);">Stay:</span> <strong>{{ encounter.length_of_stay }} day{{ encounter.length_of_stay|pluralize }}</strong></div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Presenting complaint -->
+    {% if encounter.presenting_complaint %}
+    <div style="margin-bottom:12px;">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Presenting Complaint</div>
+      <div style="font-size:14px;">{{ encounter.presenting_complaint }}</div>
+    </div>
+    {% endif %}
+
+    <!-- Treatment plan -->
+    {% if encounter.treatment_plan %}
+    <div style="margin-bottom:12px;">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Treatment Plan</div>
+      <div style="font-size:14px;">{{ encounter.treatment_plan }}</div>
+    </div>
+    {% endif %}
+
+    <!-- Diagnoses -->
+    {% if encounter.diagnoses.all %}
+    <div style="margin-bottom:12px;">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">
+        Diagnoses
+      </div>
+      {% for diag in encounter.diagnoses.all %}
+      <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;
+                  padding:8px 12px;background:#EBF4FF;border-radius:8px;">
+        <span class="badge badge-blue" style="flex-shrink:0;font-size:10px;">{{ diag.get_diagnosis_type_display }}</span>
+        <div>
+          {% if diag.diagnosis_code %}
+          <span style="font-family:monospace;font-size:11px;color:var(--primary);font-weight:700;">[{{ diag.diagnosis_code }}]</span>
+          {% endif %}
+          <strong style="font-size:13px;">{{ diag.diagnosis_name }}</strong>
+          {% if diag.notes %}<div style="font-size:12px;color:var(--muted);margin-top:2px;">{{ diag.notes }}</div>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Doctor's report if present -->
+    {% if encounter.doctors_report %}
+    <div>
+      <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Doctor's Notes</div>
+      <div style="font-size:14px;line-height:1.6;white-space:pre-wrap;background:var(--bg);padding:10px 14px;border-radius:8px;">{{ encounter.doctors_report }}</div>
+    </div>
+    {% endif %}
+
+    <!-- Discharge summary -->
+    {% if encounter.discharge_summary %}
+    <div style="margin-top:12px;">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Discharge Summary</div>
+      <div style="font-size:14px;line-height:1.6;white-space:pre-wrap;background:#F0FFF4;padding:10px 14px;border-radius:8px;">{{ encounter.discharge_summary }}</div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endfor %}
+
+{% else %}
+<div style="text-align:center;padding:60px 20px;color:var(--muted);">
+  <i class="fas fa-file-medical" style="font-size:48px;opacity:.2;display:block;margin-bottom:16px;"></i>
+  <div style="font-size:18px;font-weight:600;">No records available yet</div>
+  <p style="margin-top:8px;font-size:14px;">
+    Your doctor will share records with you here once they have been reviewed.
+  </p>
+</div>
+{% endif %}
+
+{% endblock %}
+

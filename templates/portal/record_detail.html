@@ -1,0 +1,57 @@
+{% extends "portal/base_portal.html" %}
+{% block content %}
+
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+  <a href="{% url 'portal:records' %}" style="color:var(--muted);text-decoration:none;font-size:13px;">
+    <i class="fas fa-arrow-left"></i> Back to Records
+  </a>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-header">
+    <div class="icon" style="background:#F7FAFC;color:var(--muted);">
+      <i class="fas {% if record.file_type == 'image' %}fa-image{% elif record.file_type == 'pdf' %}fa-file-pdf{% else %}fa-file-alt{% endif %}"></i>
+    </div>
+    <div>
+      <h2>{{ record.title }}</h2>
+      <div style="font-size:12px;color:var(--muted);">
+        {{ record.get_record_type_display|default:"Medical Record" }} · {{ record.uploaded_at|date:"D, M d Y" }}
+        {% if record.uploaded_by %} · Added by {{ record.uploaded_by.get_full_name }}{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card-body">
+    {% if record.body %}
+    <div style="font-size:14px;line-height:1.7;white-space:pre-wrap;margin-bottom:16px;">{{ record.body }}</div>
+    {% endif %}
+
+    {% if record.attached_file %}
+    <div style="margin-top:16px;padding:14px;background:#F7FAFC;border-radius:10px;
+                display:flex;align-items:center;gap:12px;">
+      <i class="fas fa-paperclip" style="color:var(--primary);font-size:18px;"></i>
+      <div style="flex:1;">
+        <div style="font-weight:600;font-size:14px;">Attached File</div>
+        <div style="font-size:12px;color:var(--muted);">{{ record.attached_file.name|default:"Document" }}</div>
+      </div>
+      <a href="{{ record.attached_file.url }}" target="_blank"
+         style="background:var(--primary);color:#fff;border-radius:8px;padding:8px 16px;
+                font-size:13px;font-weight:600;text-decoration:none;">
+        <i class="fas fa-download"></i> View
+      </a>
+    </div>
+    {% endif %}
+
+    {% if not record.body and not record.attached_file %}
+    <p style="color:var(--muted);font-size:14px;">No content available for this record.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if record.version_number > 1 %}
+<div style="font-size:12px;color:var(--muted);text-align:center;">
+  Version {{ record.version_number }} · Last updated {{ record.updated_at|date:"M d, Y" }}
+</div>
+{% endif %}
+
+{% endblock %}

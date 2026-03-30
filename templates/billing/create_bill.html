@@ -1,0 +1,231 @@
+{% extends "base/base.html" %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Create Bill</h1>
+    <div class="breadcrumb-abi">
+      <a href="{% url 'patient_detail:detail' patient.hospital_number %}">{{ patient.full_name }}</a>
+      › Create Bill
+    </div>
+  </div>
+  <a href="{% url 'patient_detail:detail' patient.hospital_number %}" class="btn-abi-outline">
+    <i class="fas fa-arrow-left"></i> Back
+  </a>
+</div>
+
+<!-- Patient banner -->
+<div style="background:linear-gradient(135deg,#06304A,var(--primary));border-radius:12px;
+            padding:16px 24px;margin-bottom:20px;color:#fff;display:flex;align-items:center;gap:16px;">
+  <div style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.15);
+              display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0;">
+    {{ patient.first_name|first }}{{ patient.last_name|first }}
+  </div>
+  <div>
+    <div style="font-size:17px;font-weight:700;">{{ patient.full_name }}</div>
+    <div style="font-size:13px;opacity:.75;">{{ patient.hospital_number }}{% if patient.age %} · {{ patient.age }} yrs{% endif %}</div>
+  </div>
+</div>
+
+<form method="post" class="form-abi" id="billForm">
+{% csrf_token %}
+
+<div class="row g-4">
+
+  <!-- Left: Bill details -->
+  <div class="col-lg-8">
+
+    <!-- Link to encounter -->
+    <div class="card-abi mb-4">
+      <div class="card-header-abi">
+        <i class="fas fa-notes-medical" style="color:var(--primary);"></i>
+        <h2>Link to Clinical Encounter</h2>
+        <span style="margin-left:auto;font-size:12px;color:var(--text-muted);">Optional</span>
+      </div>
+      <div class="card-body-abi">
+        <select name="encounter_id" class="form-select">
+          <option value="">— No specific encounter —</option>
+          {% for enc in encounters %}
+          <option value="{{ enc.pk }}">
+            {{ enc.get_encounter_type_display }} — {{ enc.encounter_date|date:"M d, Y" }}
+            {% if enc.ward_admitted %}({{ enc.get_ward_admitted_display }}){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- Line items -->
+    <div class="card-abi mb-4">
+      <div class="card-header-abi">
+        <i class="fas fa-list" style="color:var(--accent);"></i>
+        <h2>Bill Items</h2>
+      </div>
+      <div class="card-body-abi">
+
+        <div id="itemsContainer">
+          <!-- Item rows added by JS -->
+        </div>
+
+        <button type="button" id="addItemBtn"
+                style="margin-top:12px;background:none;border:2px dashed var(--border);
+                       border-radius:10px;padding:10px 20px;width:100%;font-size:14px;
+                       font-weight:600;color:var(--primary);cursor:pointer;transition:all .2s;"
+                onmouseover="this.style.borderColor='var(--primary)';this.style.background='#EBF4FF';"
+                onmouseout="this.style.borderColor='var(--border)';this.style.background='none';">
+          <i class="fas fa-plus"></i> Add Item
+        </button>
+
+        <!-- Bill total display -->
+        <div style="margin-top:20px;padding:16px;background:#F7FAFC;border-radius:10px;
+                    display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:15px;font-weight:600;">Total Amount</span>
+          <span id="billTotal" style="font-size:24px;font-weight:800;color:var(--primary);">₦0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notes to nurse and patient -->
+    <div class="card-abi mb-4">
+      <div class="card-header-abi">
+        <i class="fas fa-comment-medical" style="color:var(--text-muted);"></i>
+        <h2>Notes</h2>
+      </div>
+      <div class="card-body-abi">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Doctor's Billing Notes (visible to nurse)</label>
+            <textarea name="notes" class="form-control" rows="2"
+                      placeholder="Internal notes for the nurse about this bill..."></textarea>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Message to Patient</label>
+            <textarea name="patient_message" class="form-control" rows="2"
+                      placeholder="Message the patient will see with their bill in the portal..."></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right: Assign nurse and submit -->
+  <div class="col-lg-4">
+
+    <div class="card-abi mb-4">
+      <div class="card-header-abi">
+        <i class="fas fa-user-nurse" style="color:var(--accent);"></i>
+        <h2>Assign Nurse</h2>
+      </div>
+      <div class="card-body-abi">
+        <label class="form-label">Nurse in Charge</label>
+        <select name="nurse_id" class="form-select">
+          <option value="">— Select nurse —</option>
+          {% for nurse in nurses %}
+          <option value="{{ nurse.pk }}">{{ nurse.get_full_name|default:nurse.username }}</option>
+          {% endfor %}
+        </select>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">
+          The nurse will receive a notification when you send this bill.
+        </div>
+      </div>
+    </div>
+
+    <div class="card-abi">
+      <div class="card-body-abi">
+        <div style="background:#FFFBEB;border-radius:8px;padding:12px;font-size:12px;
+                    color:#744210;margin-bottom:16px;">
+          <i class="fas fa-info-circle"></i>
+          After saving, click <strong>Send to Nurse</strong> on the bill detail page
+          to send it through the billing workflow.
+        </div>
+        <button type="submit" class="btn-abi-primary" style="width:100%;justify-content:center;">
+          <i class="fas fa-save"></i> Save Bill as Draft
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</form>
+
+<!-- Item row template (hidden) -->
+<template id="itemTemplate">
+  <div class="item-row" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:8px;
+                                align-items:end;margin-bottom:10px;padding:12px;
+                                background:#F7FAFC;border-radius:10px;border:1px solid var(--border);">
+    <div>
+      <label style="font-size:12px;font-weight:600;color:var(--text-muted);">Description *</label>
+      <input type="text" name="item_description" class="form-control item-desc" required
+             placeholder="e.g. Consultation fee, Paracetamol 500mg..." />
+    </div>
+    <div>
+      <label style="font-size:12px;font-weight:600;color:var(--text-muted);">Type</label>
+      <select name="item_type" class="form-select">
+        {% for val, label in item_types %}
+        <option value="{{ val }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label style="font-size:12px;font-weight:600;color:var(--text-muted);">Qty</label>
+      <input type="number" name="item_quantity" class="form-control item-qty"
+             min="1" value="1" />
+    </div>
+    <div>
+      <label style="font-size:12px;font-weight:600;color:var(--text-muted);">Unit Price (₦)</label>
+      <input type="number" name="item_unit_price" class="form-control item-price"
+             min="0" step="0.01" value="0" placeholder="0.00" />
+    </div>
+    <div style="padding-bottom:2px;">
+      <button type="button" class="remove-item-btn"
+              style="background:#FFF5F5;border:1px solid #FED7D7;color:#E53E3E;
+                     border-radius:8px;padding:8px 10px;cursor:pointer;font-size:13px;">
+        <i class="fas fa-trash"></i>
+      </button>
+    </div>
+    <!-- Hidden discount field (default 0) -->
+    <input type="hidden" name="item_discount" value="0" />
+  </div>
+</template>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const container = document.getElementById('itemsContainer');
+const template  = document.getElementById('itemTemplate');
+const totalEl   = document.getElementById('billTotal');
+
+function addItem() {
+  const clone = template.content.cloneNode(true);
+  container.appendChild(clone);
+  updateTotal();
+  // Attach events to new row
+  const rows = container.querySelectorAll('.item-row');
+  const row  = rows[rows.length - 1];
+  row.querySelector('.remove-item-btn').addEventListener('click', () => {
+    row.remove();
+    updateTotal();
+  });
+  row.querySelector('.item-qty').addEventListener('input', updateTotal);
+  row.querySelector('.item-price').addEventListener('input', updateTotal);
+}
+
+function updateTotal() {
+  let total = 0;
+  container.querySelectorAll('.item-row').forEach(row => {
+    const qty   = parseFloat(row.querySelector('.item-qty').value)   || 0;
+    const price = parseFloat(row.querySelector('.item-price').value) || 0;
+    total += qty * price;
+  });
+  totalEl.textContent = '₦' + total.toLocaleString('en-NG', {minimumFractionDigits:2});
+}
+
+document.getElementById('addItemBtn').addEventListener('click', addItem);
+
+// Start with one empty item
+addItem();
+</script>
+{% endblock %}

@@ -1,0 +1,287 @@
+{% extends "base/base.html" %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Bill #{{ bill.bill_number_short }}</h1>
+    <div class="breadcrumb-abi">
+      <a href="{% url 'billing:list' %}">Billing</a> › {{ bill.patient.full_name }}
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;">
+    <a href="{% url 'patient_detail:detail' bill.patient.hospital_number %}" class="btn-abi-outline">
+      <i class="fas fa-user"></i> Patient Profile
+    </a>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  <!-- Left: Bill details -->
+  <div class="col-lg-8">
+
+    <!-- Status banner -->
+    <div style="border-radius:12px;padding:16px 20px;margin-bottom:20px;
+                background:{% if bill.status == 'paid' %}#F0FFF4{% elif bill.status == 'draft' %}#F7FAFC{% else %}#EBF4FF{% endif %};
+                border:1px solid {% if bill.status == 'paid' %}#9AE6B4{% elif bill.status == 'draft' %}var(--border){% else %}#BEE3F8{% endif %};">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <i class="fas {% if bill.status == 'paid' %}fa-check-circle{% elif bill.status == 'draft' %}fa-pen{% else %}fa-file-invoice-dollar{% endif %}"
+           style="font-size:20px;color:{% if bill.status == 'paid' %}var(--success){% else %}var(--primary){% endif %};"></i>
+        <div>
+          <div style="font-weight:700;font-size:15px;">{{ bill.get_status_display }}</div>
+          <div style="font-size:12px;color:var(--text-muted);">
+            Created {{ bill.created_at|date:"M d, Y g:i A" }}
+            {% if bill.assigned_nurse %} · Nurse: {{ bill.assigned_nurse.get_full_name|default:bill.assigned_nurse.username }}{% endif %}
+          </div>
+        </div>
+        <div style="margin-left:auto;text-align:right;">
+          <div style="font-size:24px;font-weight:800;color:var(--primary);">₦{{ bill.total_amount|floatformat:2 }}</div>
+          <div style="font-size:12px;color:{% if bill.balance > 0 %}#E53E3E{% else %}var(--success){% endif %};">
+            Balance: ₦{{ bill.balance|floatformat:2 }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Line items -->
+    <div class="card-abi mb-4">
+      <div class="card-header-abi">
+        <i class="fas fa-list" style="color:var(--primary);"></i>
+        <h2>Bill Items</h2>
+      </div>
+      <div class="card-body-abi" style="padding:0;">
+        <table class="table-abi">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Type</th>
+              <th style="text-align:center;">Qty</th>
+              <th style="text-align:right;">Unit Price</th>
+              <th style="text-align:right;">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+            <tr>
+              <td style="font-weight:600;">{{ item.description }}</td>
+              <td><span class="badge-abi badge-muted" style="font-size:10px;">{{ item.get_item_type_display }}</span></td>
+              <td style="text-align:center;">{{ item.quantity }}</td>
+              <td style="text-align:right;">₦{{ item.unit_price|floatformat:2 }}</td>
+              <td style="text-align:right;font-weight:700;">₦{{ item.subtotal|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px;">No items on this bill.</td></tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr style="background:#F7FAFC;">
+              <td colspan="4" style="text-align:right;font-weight:700;padding:12px 16px;">Total</td>
+              <td style="text-align:right;font-weight:800;font-size:16px;color:var(--primary);padding:12px 16px;">
+                ₦{{ bill.total_amount|floatformat:2 }}
+              </td>
+            </tr>
+            {% if bill.amount_paid > 0 %}
+            <tr>
+              <td colspan="4" style="text-align:right;font-weight:600;padding:8px 16px;color:var(--success);">Amount Paid</td>
+              <td style="text-align:right;font-weight:700;color:var(--success);padding:8px 16px;">₦{{ bill.amount_paid|floatformat:2 }}</td>
+            </tr>
+            <tr>
+              <td colspan="4" style="text-align:right;font-weight:700;padding:8px 16px;color:#E53E3E;">Balance Due</td>
+              <td style="text-align:right;font-weight:800;color:#E53E3E;padding:8px 16px;">₦{{ bill.balance|floatformat:2 }}</td>
+            </tr>
+            {% endif %}
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Payments received -->
+    {% if payments %}
+    <div class="card-abi mb-4">
+      <div class="card-header-abi">
+        <i class="fas fa-money-bill-wave" style="color:var(--success);"></i>
+        <h2>Payments Received</h2>
+      </div>
+      <div class="card-body-abi" style="padding:0;">
+        <table class="table-abi">
+          <thead><tr><th>Date</th><th>Method</th><th>Amount</th><th>Reference</th><th>Recorded By</th></tr></thead>
+          <tbody>
+            {% for payment in payments %}
+            <tr>
+              <td style="font-size:13px;">{{ payment.payment_date|date:"M d, Y g:i A" }}</td>
+              <td><span class="badge-abi badge-success">{{ payment.get_method_display }}</span></td>
+              <td style="font-weight:700;color:var(--success);">₦{{ payment.amount|floatformat:2 }}</td>
+              <td style="font-family:monospace;font-size:12px;">{{ payment.reference|default:"—" }}</td>
+              <td style="font-size:13px;">{{ payment.recorded_by.get_full_name|default:"System" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if bill.notes %}
+    <div class="card-abi mb-4">
+      <div class="card-header-abi"><h2>Doctor's Notes</h2></div>
+      <div class="card-body-abi"><p style="font-size:14px;">{{ bill.notes }}</p></div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- Right: Actions -->
+  <div class="col-lg-4">
+
+    <!-- Doctor actions -->
+    {% if user.role == 'doctor' or user.is_admin_staff %}
+    {% if bill.status == 'draft' %}
+    <div class="card-abi mb-4">
+      <div class="card-header-abi"><i class="fas fa-paper-plane" style="color:var(--primary);"></i><h2>Send to Nurse</h2></div>
+      <div class="card-body-abi">
+        {% if bill.assigned_nurse %}
+        <p style="font-size:13px;margin-bottom:12px;">
+          This will send the bill to <strong>{{ bill.assigned_nurse.get_full_name|default:bill.assigned_nurse.username }}</strong> for processing.
+        </p>
+        <form method="post" action="{% url 'billing:send_to_nurse' bill.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn-abi-primary" style="width:100%;justify-content:center;">
+            <i class="fas fa-paper-plane"></i> Send to Nurse
+          </button>
+        </form>
+        {% else %}
+        <div style="background:#FFF5F5;border-radius:8px;padding:12px;font-size:13px;color:#742A2A;">
+          <i class="fas fa-exclamation-triangle"></i>
+          No nurse assigned. <a href="{% url 'billing:create' bill.patient.hospital_number %}">Edit the bill</a> to assign a nurse first.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Nurse actions -->
+    {% if user.role == 'nurse' or user.is_admin_staff %}
+    {% if bill.status == 'sent_to_nurse' %}
+    <div class="card-abi mb-4">
+      <div class="card-header-abi"><i class="fas fa-user-injured" style="color:var(--accent);"></i><h2>Forward to Patient</h2></div>
+      <div class="card-body-abi">
+        <p style="font-size:13px;margin-bottom:12px;">
+          Send this bill to the patient's portal so they can view and pay it.
+        </p>
+        <form method="post" action="{% url 'billing:send_to_patient' bill.pk %}">
+          {% csrf_token %}
+          <button type="submit" style="width:100%;background:linear-gradient(135deg,var(--accent),#009E7C);
+                  color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;
+                  font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <i class="fas fa-share"></i> Send to Patient Portal
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if bill.status in 'sent_to_patient,partially_paid' %}
+    <div class="card-abi mb-4">
+      <div class="card-header-abi"><i class="fas fa-money-bill" style="color:var(--success);"></i><h2>Record Cash Payment</h2></div>
+      <div class="card-body-abi">
+        <form method="post" action="{% url 'billing:cash_payment' bill.pk %}" class="form-abi">
+          {% csrf_token %}
+          <div class="row g-2">
+            <div class="col-12">
+              <label class="form-label">Amount Received (₦) *</label>
+              <input type="number" name="amount" class="form-control" required
+                     min="0.01" step="0.01" max="{{ bill.balance }}"
+                     placeholder="0.00" />
+              <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">
+                Balance due: ₦{{ bill.balance|floatformat:2 }}
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Notes</label>
+              <input type="text" name="notes" class="form-control" placeholder="Optional notes" />
+            </div>
+            <div class="col-12">
+              <button type="submit" class="btn-abi-primary" style="width:100%;justify-content:center;background:linear-gradient(135deg,var(--success),#276749);">
+                <i class="fas fa-check-circle"></i> Confirm Cash Payment
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Patient actions — pay online -->
+    {% if user.is_patient_user and bill.status in 'sent_to_patient,partially_paid' and bill.balance > 0 %}
+    <div class="card-abi mb-4">
+      <div class="card-header-abi"><i class="fas fa-credit-card" style="color:var(--primary);"></i><h2>Pay Online</h2></div>
+      <div class="card-body-abi">
+        {% if bill.patient_message %}
+        <div style="background:#EBF4FF;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;">
+          {{ bill.patient_message }}
+        </div>
+        {% endif %}
+        <div style="text-align:center;margin-bottom:16px;">
+          <div style="font-size:28px;font-weight:800;color:var(--primary);">₦{{ bill.balance|floatformat:2 }}</div>
+          <div style="font-size:12px;color:var(--text-muted);">Amount due</div>
+        </div>
+        <a href="{% url 'billing:paystack_init' bill.pk %}"
+           style="display:flex;align-items:center;justify-content:center;gap:10px;
+                  width:100%;background:linear-gradient(135deg,#0D7CF2,#055FBD);
+                  color:#fff;border:none;border-radius:10px;padding:13px;
+                  font-size:15px;font-weight:700;text-decoration:none;">
+          <i class="fas fa-credit-card"></i> Pay with Paystack
+        </a>
+        <div style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:8px;">
+          Secured by Paystack · Card, Bank Transfer, or USSD
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Bill paid -->
+    {% if bill.status == 'paid' %}
+    <div class="card-abi mb-4">
+      <div class="card-body-abi" style="text-align:center;padding:28px;">
+        <i class="fas fa-check-circle" style="font-size:40px;color:var(--success);display:block;margin-bottom:12px;"></i>
+        <div style="font-size:18px;font-weight:700;color:var(--success);">Fully Paid</div>
+        {% if bill.paid_at %}
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">{{ bill.paid_at|date:"M d, Y g:i A" }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Bill summary card -->
+    <div class="card-abi">
+      <div class="card-header-abi"><h2>Summary</h2></div>
+      <div class="card-body-abi">
+        <dl style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;font-size:13px;">
+          <dt style="color:var(--text-muted);">Patient</dt>
+          <dd style="font-weight:600;">{{ bill.patient.full_name }}</dd>
+          <dt style="color:var(--text-muted);">Hospital #</dt>
+          <dd>{{ bill.patient.hospital_number }}</dd>
+          <dt style="color:var(--text-muted);">Created by</dt>
+          <dd>{{ bill.created_by.get_full_name|default:bill.created_by.username }}</dd>
+          {% if bill.assigned_nurse %}
+          <dt style="color:var(--text-muted);">Nurse</dt>
+          <dd>{{ bill.assigned_nurse.get_full_name|default:bill.assigned_nurse.username }}</dd>
+          {% endif %}
+          {% if bill.encounter %}
+          <dt style="color:var(--text-muted);">Encounter</dt>
+          <dd>{{ bill.encounter.get_encounter_type_display }} — {{ bill.encounter.encounter_date|date:"M d, Y" }}</dd>
+          {% endif %}
+          {% if bill.paystack_reference %}
+          <dt style="color:var(--text-muted);">Paystack Ref</dt>
+          <dd style="font-family:monospace;font-size:11px;">{{ bill.paystack_reference }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

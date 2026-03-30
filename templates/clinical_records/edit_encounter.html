@@ -1,0 +1,128 @@
+{% extends "base/base.html" %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Edit Clinical Record</h1>
+    <div class="breadcrumb-abi">
+      <a href="{% url 'clinical_records:patient_records' encounter.patient.hospital_number %}">Records</a>
+      › <a href="{% url 'clinical_records:encounter_detail' encounter.pk %}">{{ encounter.encounter_date|date:"M d, Y" }}</a>
+      › Edit
+    </div>
+  </div>
+  <a href="{% url 'clinical_records:encounter_detail' encounter.pk %}" class="btn-abi-outline">
+    <i class="fas fa-arrow-left"></i> Cancel
+  </a>
+</div>
+
+<!-- Patient banner -->
+<div style="background:#F7FAFC;border:1px solid var(--border);border-radius:10px;
+            padding:12px 20px;margin-bottom:20px;display:flex;align-items:center;gap:14px;">
+  <div style="width:40px;height:40px;border-radius:50%;background:var(--primary);color:#fff;
+              display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;">
+    {{ encounter.patient.first_name|first }}{{ encounter.patient.last_name|first }}
+  </div>
+  <div>
+    <div style="font-weight:700;">{{ encounter.patient.full_name }}</div>
+    <div style="font-size:13px;color:var(--text-muted);">
+      {{ encounter.patient.hospital_number }} · {{ encounter.get_encounter_type_display }} · {{ encounter.encounter_date|date:"M d, Y" }}
+    </div>
+  </div>
+</div>
+
+<form method="post" class="form-abi">
+{% csrf_token %}
+
+<!-- Inpatient fields -->
+{% if encounter.encounter_type == 'inpatient' or encounter.encounter_type == 'emergency' or encounter.encounter_type == 'day_case' %}
+<div class="card-abi mb-4">
+  <div class="card-header-abi" style="background:#EBF4FF;">
+    <i class="fas fa-bed" style="color:var(--primary);"></i>
+    <h2>Admission Details</h2>
+  </div>
+  <div class="card-body-abi"><div class="row g-3">
+    <div class="col-md-4">
+      <label class="form-label">Ward Admitted</label>
+      <select name="ward_admitted" class="form-select">
+        <option value="">— Select —</option>
+        {% for val, label in ward_choices %}
+        <option value="{{ val }}" {% if encounter.ward_admitted == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Bed Number</label>
+      <input type="text" name="bed_number" class="form-control" value="{{ encounter.bed_number }}" />
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Date of Discharge</label>
+      <input type="date" name="discharge_date" class="form-control"
+             value="{{ encounter.discharge_date|date:'Y-m-d'|default:'' }}" />
+    </div>
+    <div class="col-12">
+      <label class="form-label">Discharge Summary</label>
+      <textarea name="discharge_summary" class="form-control" rows="3">{{ encounter.discharge_summary }}</textarea>
+    </div>
+  </div></div>
+</div>
+{% endif %}
+
+<!-- Consultant and billing -->
+<div class="card-abi mb-4">
+  <div class="card-header-abi"><i class="fas fa-user-md" style="color:var(--primary);"></i><h2>Consultant &amp; Billing</h2></div>
+  <div class="card-body-abi"><div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">Consultant / Doctor</label>
+      <select name="consultant_id" class="form-select">
+        <option value="">— Select —</option>
+        {% for doc in doctors %}
+        <option value="{{ doc.pk }}" {% if encounter.consultant == doc %}selected{% endif %}>
+          Dr. {{ doc.get_full_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Billing / CPT Code</label>
+      <input type="text" name="billing_code" class="form-control"
+             value="{{ encounter.billing_code }}" placeholder="e.g. 99213" />
+    </div>
+  </div></div>
+</div>
+
+<!-- Clinical notes -->
+<div class="card-abi mb-4">
+  <div class="card-header-abi"><i class="fas fa-notes-medical" style="color:var(--accent);"></i><h2>Clinical Notes</h2></div>
+  <div class="card-body-abi"><div class="row g-3">
+    <div class="col-12">
+      <label class="form-label">Presenting Complaint</label>
+      <textarea name="presenting_complaint" class="form-control" rows="2">{{ encounter.presenting_complaint }}</textarea>
+    </div>
+    <div class="col-12">
+      <label class="form-label">History of Presenting Illness</label>
+      <textarea name="history_of_illness" class="form-control" rows="4">{{ encounter.history_of_illness }}</textarea>
+    </div>
+    <div class="col-12">
+      <label class="form-label">Examination Findings</label>
+      <textarea name="examination_findings" class="form-control" rows="4">{{ encounter.examination_findings }}</textarea>
+    </div>
+    <div class="col-12">
+      <label class="form-label">Treatment Plan</label>
+      <textarea name="treatment_plan" class="form-control" rows="3">{{ encounter.treatment_plan }}</textarea>
+    </div>
+    <div class="col-12">
+      <label class="form-label">Doctor's Report / Additional Notes</label>
+      <textarea name="doctors_report" class="form-control" rows="3">{{ encounter.doctors_report }}</textarea>
+    </div>
+  </div></div>
+</div>
+
+<div style="display:flex;gap:12px;justify-content:flex-end;padding-bottom:40px;">
+  <a href="{% url 'clinical_records:encounter_detail' encounter.pk %}" class="btn-abi-outline">Cancel</a>
+  <button type="submit" class="btn-abi-primary" style="padding:11px 28px;">
+    <i class="fas fa-save"></i> Save Changes
+  </button>
+</div>
+</form>
+
+{% endblock %}

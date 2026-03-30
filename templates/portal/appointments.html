@@ -1,0 +1,73 @@
+{% extends "portal/base_portal.html" %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <h1 style="font-size:22px;font-weight:800;">My Appointments</h1>
+</div>
+
+{% if upcoming %}
+<div style="margin-bottom:8px;font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">
+  Upcoming
+</div>
+{% for appt in upcoming %}
+<div class="card" style="margin-bottom:12px;border-left:4px solid var(--primary);">
+  <div class="card-body">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div style="text-align:center;min-width:52px;">
+        <div style="font-size:22px;font-weight:800;color:var(--primary);">{{ appt.appointment_date|date:"d" }}</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600;">{{ appt.appointment_date|date:"M Y" }}</div>
+      </div>
+      <div style="width:1px;height:40px;background:var(--border);"></div>
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:15px;">{{ appt.get_appointment_type_display }}</div>
+        <div style="font-size:13px;color:var(--muted);">
+          {{ appt.appointment_time|time:"g:i A" }}
+          {% if appt.doctor %} · Dr. {{ appt.doctor.get_full_name }}{% endif %}
+        </div>
+        {% if appt.notes %}<div style="font-size:12px;color:var(--muted);margin-top:4px;">{{ appt.notes }}</div>{% endif %}
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span class="badge badge-blue">{{ appt.get_status_display }}</span>
+        {% if appt.can_join_teleconsult %}
+        <a href="{% url 'appointments:join_teleconsult' appt.pk %}"
+           style="background:linear-gradient(135deg,#3182CE,#1A365D);color:#fff;border:none;
+                  border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;text-decoration:none;
+                  display:flex;align-items:center;gap:6px;">
+          <i class="fas fa-video"></i> Join
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if past %}
+<div style="margin-top:20px;margin-bottom:8px;font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">
+  Past Appointments
+</div>
+{% for appt in past %}
+<div class="card" style="margin-bottom:10px;opacity:.8;">
+  <div class="card-body" style="padding:12px 16px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-size:13px;font-weight:600;color:var(--muted);min-width:80px;">{{ appt.appointment_date|date:"M d, Y" }}</div>
+      <div style="flex:1;font-size:13px;">
+        {{ appt.get_appointment_type_display }}
+        {% if appt.doctor %} · Dr. {{ appt.doctor.get_full_name }}{% endif %}
+      </div>
+      <span class="badge badge-gray" style="font-size:10px;">{{ appt.get_status_display }}</span>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if not upcoming and not past %}
+<div style="text-align:center;padding:60px 20px;color:var(--muted);">
+  <i class="fas fa-calendar" style="font-size:48px;opacity:.2;display:block;margin-bottom:16px;"></i>
+  <div style="font-size:18px;font-weight:600;">No appointments on record</div>
+</div>
+{% endif %}
+
+{% endblock %}

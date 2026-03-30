@@ -124,6 +124,7 @@ def add_encounter_view(request, hospital_number):
         'doctors':          doctors,
         'encounter_types':  PatientEncounter.ENCOUNTER_TYPE_CHOICES,
         'ward_choices':     PatientEncounter.WARD_CHOICES,
+        'today':            timezone.now().date(),
     })
 
 
@@ -149,6 +150,7 @@ def encounter_detail_view(request, pk):
         'operations':   encounter.operations.all(),
         'diag_types':   Diagnosis.DIAGNOSIS_TYPE_CHOICES,
         'op_types':     Operation.OPERATION_TYPE_CHOICES,
+        'today':        timezone.now().date(),
     })
 
 
@@ -305,5 +307,4 @@ def delete_diagnosis_view(request, pk):
         diagnosis.delete()
         messages.success(request, "Diagnosis removed.")
     return redirect('clinical_records:encounter_detail', pk=encounter_pk)
-
 # Create your views here.

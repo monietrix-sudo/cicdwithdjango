@@ -1,0 +1,89 @@
+{% extends "portal/base_portal.html" %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <h1 style="font-size:22px;font-weight:800;">My Profile</h1>
+  <p style="font-size:13px;color:var(--muted);">Your personal information on file at the hospital.</p>
+</div>
+
+<!-- Profile header -->
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-body" style="padding:24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+    {% if patient.photo %}
+    <img src="{{ patient.photo.url }}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--border);" />
+    {% else %}
+    <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));
+                display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;color:#fff;flex-shrink:0;">
+      {{ patient.first_name|first|upper }}{{ patient.last_name|first|upper }}
+    </div>
+    {% endif %}
+    <div>
+      <div style="font-size:24px;font-weight:800;color:var(--dark);">{{ patient.full_name }}</div>
+      <div style="font-size:14px;color:var(--muted);margin-top:4px;">
+        {{ patient.hospital_number }}
+        {% if patient.age %} · {{ patient.age }} years old{% endif %}
+        {% if patient.blood_group %} · Blood Group: <strong>{{ patient.blood_group }}</strong>{% endif %}
+        {% if patient.genotype %} · Genotype: <strong>{{ patient.genotype }}</strong>{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% macro section_row label value %}{% endmacro %}
+
+<div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+
+  <!-- Personal Info -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon" style="background:#EBF4FF;color:var(--primary);"><i class="fas fa-user"></i></div>
+      <h2>Personal Information</h2>
+    </div>
+    <div class="card-body">
+      {% for label, value in profile_rows_personal %}
+      {% if value %}
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;">
+        <span style="color:var(--muted);">{{ label }}</span>
+        <span style="font-weight:600;max-width:60%;text-align:right;">{{ value }}</span>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Medical Info -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon" style="background:#FFF5F5;color:#E53E3E;"><i class="fas fa-heartbeat"></i></div>
+      <h2>Medical Information</h2>
+    </div>
+    <div class="card-body">
+      {% for label, value in profile_rows_medical %}
+      {% if value %}
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;">
+        <span style="color:var(--muted);">{{ label }}</span>
+        <span style="font-weight:600;max-width:60%;text-align:right;{% if 'allerg' in label|lower %}color:#E53E3E;{% endif %}">{{ value }}</span>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+
+<!-- Allergies warning if present -->
+{% if patient.allergies %}
+<div class="alert alert-error" style="margin-top:16px;">
+  <i class="fas fa-exclamation-triangle"></i>
+  <strong>Known Allergies:</strong> {{ patient.allergies }}
+</div>
+{% endif %}
+
+<!-- Contact with us -->
+<div style="background:#F7FAFC;border-radius:12px;padding:16px 20px;margin-top:16px;font-size:13px;color:var(--muted);">
+  <i class="fas fa-info-circle"></i>
+  If any of your information is incorrect, please visit the hospital reception or contact us to request an update.
+  We do not allow patients to edit their own medical records directly.
+</div>
+
+{% endblock %}

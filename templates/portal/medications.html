@@ -1,0 +1,86 @@
+{% extends "portal/base_portal.html" %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <h1 style="font-size:22px;font-weight:800;">My Medications</h1>
+  <p style="font-size:13px;color:var(--muted);">Today is {{ today|date:"D, M d Y" }}</p>
+</div>
+
+<!-- Today's dose timetable -->
+{% if todays_doses %}
+<div class="card" style="margin-bottom:20px;border-left:4px solid var(--accent);">
+  <div class="card-header">
+    <div class="icon" style="background:#E6FFFA;color:var(--accent);"><i class="fas fa-clock"></i></div>
+    <h2>Today's Dose Timetable</h2>
+  </div>
+  <div class="card-body" style="padding:0;">
+    {% for dose in todays_doses %}
+    <div style="display:flex;align-items:center;gap:14px;padding:14px 20px;
+                border-bottom:1px solid var(--border);
+                {% if dose.taken %}opacity:.6;background:#F7FAFC;{% endif %}">
+      <div style="text-align:center;min-width:48px;">
+        <div style="font-size:16px;font-weight:800;color:{% if dose.taken %}var(--muted){% elif dose.scheduled_datetime < now %}#E53E3E{% else %}var(--primary){% endif %};">
+          {{ dose.scheduled_datetime|time:"g:i" }}
+        </div>
+        <div style="font-size:10px;color:var(--muted);">{{ dose.scheduled_datetime|time:"A" }}</div>
+      </div>
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:14px;{% if dose.taken %}text-decoration:line-through;color:var(--muted);{% endif %}">
+          {{ dose.schedule.drug_name }}
+        </div>
+        <div style="font-size:12px;color:var(--muted);">{{ dose.schedule.dosage }}</div>
+      </div>
+      {% if dose.taken %}
+      <span class="badge badge-green"><i class="fas fa-check"></i> Taken {{ dose.taken_at|time:"g:i A" }}</span>
+      {% elif dose.scheduled_datetime <= now %}
+      <form method="post" action="{% url 'portal:tick_dose' dose.pk %}">
+        {% csrf_token %}
+        <button type="submit" style="background:var(--accent);color:#fff;border:none;
+                border-radius:10px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">
+          <i class="fas fa-check"></i> Mark Taken
+        </button>
+      </form>
+      {% else %}
+      <span class="badge badge-gray">Upcoming</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Active prescriptions -->
+{% if active_schedules %}
+<h2 style="font-size:16px;font-weight:700;margin-bottom:12px;color:var(--dark);">Active Prescriptions</h2>
+{% for med in active_schedules %}
+<div class="card" style="margin-bottom:12px;">
+  <div class="card-body">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div style="width:44px;height:44px;border-radius:12px;background:#FFF5F5;color:#E53E3E;
+                  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">
+        <i class="fas fa-capsules"></i>
+      </div>
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:15px;">{{ med.drug_name }}</div>
+        <div style="font-size:13px;color:var(--muted);">{{ med.dosage }} · {{ med.get_frequency_display }}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+          {{ med.start_date|date:"M d" }} — {{ med.end_date|date:"M d, Y" }}
+        </div>
+      </div>
+      {% if med.instructions %}
+      <div style="font-size:12px;background:#FFFBEB;border-radius:8px;padding:6px 10px;color:#744210;">
+        <i class="fas fa-info-circle"></i> {{ med.instructions }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% else %}
+<div style="text-align:center;padding:60px 20px;color:var(--muted);">
+  <i class="fas fa-pills" style="font-size:48px;opacity:.2;display:block;margin-bottom:16px;"></i>
+  <div style="font-size:18px;font-weight:600;">No active medications</div>
+</div>
+{% endif %}
+
+{% endblock %}

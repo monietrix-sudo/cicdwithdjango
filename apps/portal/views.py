@@ -115,9 +115,44 @@ def portal_profile_view(request):
         return deny
 
     log_action(request.user, 'VIEW', request, "Patient viewed own profile")
+
+    profile_rows_personal = [
+        ('Hospital Number',    patient.hospital_number),
+        ('Full Name',          patient.full_name),
+        ('Date of Birth',      patient.date_of_birth.strftime('%d %B %Y') if patient.date_of_birth else ''),
+        ('Age',                f'{patient.age} years' if patient.age else ''),
+        ('Gender',             patient.get_gender_display()),
+        ('Marital Status',     patient.get_marital_status_display() if patient.marital_status else ''),
+        ('Religion',           patient.get_religion_display() if patient.religion else ''),
+        ('Occupation',         patient.occupation),
+        ('Phone Number',       patient.phone_number),
+        ('Alt. Phone',         patient.alt_phone_number),
+        ('Email',              patient.email),
+        ('Address',            patient.address),
+        ('City / State',       f'{patient.city}, {patient.state}'.strip(', ') if patient.city or patient.state else ''),
+        ('Hometown',           patient.hometown),
+        ('State of Origin',    patient.state_of_origin),
+        ('Nationality',        patient.nationality),
+    ]
+    profile_rows_medical = [
+        ('Blood Group',        patient.blood_group),
+        ('Genotype',           patient.genotype),
+        ('Allergies',          patient.allergies),
+        ('Chronic Conditions', patient.chronic_conditions),
+        ('Disabilities',       patient.disabilities),
+        ('Insurance Provider', patient.insurance_provider),
+        ('NHIS Number',        patient.nhis_number),
+        ('Next of Kin',        patient.nok_name),
+        ('NOK Relationship',   patient.get_nok_relationship_display() if patient.nok_relationship else ''),
+        ('NOK Phone',          patient.nok_phone),
+        ('Assigned Doctor',    f'Dr. {patient.assigned_doctor.get_full_name()}' if patient.assigned_doctor else ''),
+    ]
+
     return render(request, 'portal/profile.html', {
-        'page_title': 'My Profile',
-        'patient':    patient,
+        'page_title':            'My Profile',
+        'patient':               patient,
+        'profile_rows_personal': profile_rows_personal,
+        'profile_rows_medical':  profile_rows_medical,
     })
 
 
