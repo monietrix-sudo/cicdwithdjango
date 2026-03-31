@@ -1,0 +1,35 @@
+{% extends "base/base.html" %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Vitals — {{ patient.full_name }}</h1>
+    <div class="breadcrumb-abi"><a href="{% url 'patient_detail:detail' patient.hospital_number %}">{{ patient.hospital_number }}</a> › Vitals History</div>
+  </div>
+  <a href="{% url 'patient_detail:detail' patient.hospital_number %}" class="btn-abi-outline"><i class="fas fa-arrow-left"></i> Patient Profile</a>
+</div>
+<div class="card-abi">
+  <div class="card-body-abi" style="padding:0;overflow-x:auto;">
+    <table class="table-abi" style="min-width:700px;">
+      <thead><tr><th>Date / Time</th><th>Temp</th><th>BP</th><th>Pulse</th><th>RR</th><th>SpO2</th><th>Sugar</th><th>Pain</th><th>Consciousness</th><th>Nurse</th></tr></thead>
+      <tbody>
+        {% for v in vitals %}
+        <tr style="{% if v.is_critical %}background:#FFF5F5;{% endif %}">
+          <td style="font-weight:600;font-size:13px;">{{ v.recorded_at|date:"d M Y H:i" }}</td>
+          <td style="{% if v.temperature and v.temperature > 38 %}color:#E53E3E;font-weight:700;{% endif %}">{{ v.temperature|default:"—" }}{% if v.temperature %}°{% endif %}</td>
+          <td style="{% if v.blood_pressure_sys and v.blood_pressure_sys > 160 %}color:#E53E3E;font-weight:700;{% endif %}">{{ v.blood_pressure|default:"—" }}</td>
+          <td>{{ v.pulse_rate|default:"—" }}</td>
+          <td>{{ v.respiratory_rate|default:"—" }}</td>
+          <td style="{% if v.oxygen_saturation and v.oxygen_saturation < 94 %}color:#E53E3E;font-weight:700;{% endif %}">{{ v.oxygen_saturation|default:"—" }}{% if v.oxygen_saturation %}%{% endif %}</td>
+          <td>{{ v.blood_glucose|default:"—" }}</td>
+          <td>{% if v.pain_score %}<span style="font-weight:700;{% if v.pain_score >= 7 %}color:#E53E3E;{% elif v.pain_score >= 4 %}color:#D69E2E;{% endif %}">{{ v.pain_score }}/10</span>{% else %}—{% endif %}</td>
+          <td style="font-size:12px;">{{ v.get_consciousness_display|default:"—" }}</td>
+          <td style="font-size:12px;color:var(--text-muted);">{{ v.recorded_by.get_full_name|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="10" style="text-align:center;padding:48px;color:var(--text-muted);">No vitals recorded for this patient yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

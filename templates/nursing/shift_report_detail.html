@@ -1,0 +1,647 @@
+{% extends "base/base.html" %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+  <div>
+    <div style="font-size:22px;font-weight:800;color:var(--dark);">
+      {{ report.get_shift_display }}
+      <span style="color:var(--text-muted);font-weight:400;font-size:16px;"> {{ report.date|date:"D, d M Y" }}</span>
+    </div>
+    <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">
+      <a href="{% url 'nursing:dashboard' %}" style="color:var(--text-muted);text-decoration:none;">Nursing</a> ›
+      <a href="{% url 'nursing:shift_list' %}" style="color:var(--text-muted);text-decoration:none;">Shifts</a> › Report
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <div style="display:flex;background:#F0F4F8;border:1px solid var(--border);border-radius:12px;padding:3px;">
+      <a href="?mode=quick"
+         style="padding:7px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;transition:all .2s;
+                background:{% if mode == 'quick' %}var(--primary){% else %}transparent{% endif %};
+                color:{% if mode == 'quick' %}#fff{% else %}var(--text-muted){% endif %};">
+        <i class="fas fa-bolt"></i> Quick
+      </a>
+      <a href="?mode=deep"
+         style="padding:7px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;transition:all .2s;
+                background:{% if mode == 'deep' %}var(--primary){% else %}transparent{% endif %};
+                color:{% if mode == 'deep' %}#fff{% else %}var(--text-muted){% endif %};">
+        <i class="fas fa-search-plus"></i> Deep Dive
+      </a>
+    </div>
+    {% if not report.is_submitted %}
+    <button id="openHandoverBtn"
+            style="background:linear-gradient(135deg,#276749,#00856A);color:#fff;border:none;
+                   border-radius:12px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;
+                   display:flex;align-items:center;gap:7px;">
+      <i class="fas fa-check-double"></i> Submit &amp; Hand Over
+    </button>
+    {% else %}
+    <span style="background:#F0FFF4;border:1px solid #9AE6B4;color:var(--success);
+                 border-radius:12px;padding:8px 16px;font-size:13px;font-weight:600;">
+      <i class="fas fa-check-circle"></i> Submitted {{ report.submitted_at|time:"H:i" }}
+    </span>
+    {% endif %}
+  </div>
+</div>
+
+{% if critical_count > 0 %}
+<div style="background:#FFF5F5;border-left:4px solid #E53E3E;border-radius:10px;
+            padding:11px 16px;margin-bottom:16px;font-size:13px;color:#742A2A;
+            display:flex;align-items:center;gap:10px;">
+  <i class="fas fa-exclamation-triangle"></i>
+  <strong>{{ critical_count }} critical vital{{ critical_count|pluralize }}</strong> recorded.
+  <a href="?mode=deep#tab-vitals" style="color:#C53030;font-weight:700;margin-left:4px;">Review →</a>
+</div>
+{% endif %}
+
+{% if mode == 'quick' %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:12px;margin-bottom:20px;">
+  <div class="stat-card" style="cursor:default;"><div class="stat-icon teal"><i class="fas fa-heartbeat"></i></div>
+    <div><div class="stat-value">{{ vitals|length }}</div><div class="stat-label">Vitals</div></div></div>
+  <div class="stat-card" style="cursor:default;"><div class="stat-icon blue"><i class="fas fa-pills"></i></div>
+    <div><div class="stat-value">{{ mar|length }}</div><div class="stat-label">Meds</div></div></div>
+  <div class="stat-card" style="cursor:default;"><div class="stat-icon" style="background:#FAF5FF;color:#805AD5;"><i class="fas fa-sticky-note"></i></div>
+    <div><div class="stat-value">{{ notes|length }}</div><div class="stat-label">Notes</div></div></div>
+  <div class="stat-card" style="cursor:default;"><div class="stat-icon" style="background:#FFFBEB;color:#D69E2E;"><i class="fas fa-box"></i></div>
+    <div><div class="stat-value">{{ materials|length }}</div><div class="stat-label">Materials</div></div></div>
+  <div class="stat-card" style="cursor:default;"><div class="stat-icon" style="background:#EBF4FF;color:var(--primary);"><i class="fas fa-procedures"></i></div>
+    <div><div class="stat-value">{{ report.patients_on_ward }}</div><div class="stat-label">On Ward</div></div></div>
+</div>
+
+{% if vitals %}
+<div class="card-abi mb-4">
+  <div class="card-header-abi">
+    <i class="fas fa-heartbeat" style="color:var(--accent);"></i><h2>Vitals Summary</h2>
+    <a href="?mode=deep" style="margin-left:auto;font-size:12px;color:var(--primary);font-weight:600;text-decoration:none;">Add more →</a>
+  </div>
+  <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead><tr style="background:#F7FAFC;border-bottom:1px solid var(--border);">
+        <th style="padding:9px 14px;text-align:left;font-weight:600;color:var(--text-muted);">Patient</th>
+        <th style="padding:9px 8px;text-align:center;color:var(--text-muted);">Temp</th>
+        <th style="padding:9px 8px;text-align:center;color:var(--text-muted);">BP</th>
+        <th style="padding:9px 8px;text-align:center;color:var(--text-muted);">Pulse</th>
+        <th style="padding:9px 8px;text-align:center;color:var(--text-muted);">SpO2</th>
+        <th style="padding:9px 8px;text-align:center;color:var(--text-muted);">Pain</th>
+        <th style="padding:9px 8px;text-align:center;color:var(--text-muted);">Time</th>
+        <th style="padding:9px 8px;"></th>
+      </tr></thead>
+      <tbody>
+        {% for v in vitals|slice:":15" %}
+        <tr style="border-bottom:1px solid var(--border);{% if v.is_critical %}background:#FFF5F5;{% endif %}">
+          <td style="padding:9px 14px;font-weight:600;">{{ v.patient.full_name }}</td>
+          <td style="padding:9px 8px;text-align:center;{% if v.temperature and v.temperature > 38 %}color:#E53E3E;font-weight:700;{% endif %}">{{ v.temperature|default:"—" }}{% if v.temperature %}°{% endif %}</td>
+          <td style="padding:9px 8px;text-align:center;{% if v.blood_pressure_sys and v.blood_pressure_sys > 160 %}color:#E53E3E;font-weight:700;{% endif %}">{{ v.blood_pressure|default:"—" }}</td>
+          <td style="padding:9px 8px;text-align:center;">{{ v.pulse_rate|default:"—" }}</td>
+          <td style="padding:9px 8px;text-align:center;{% if v.oxygen_saturation and v.oxygen_saturation < 94 %}color:#E53E3E;font-weight:700;{% endif %}">{{ v.oxygen_saturation|default:"—" }}{% if v.oxygen_saturation %}%{% endif %}</td>
+          <td style="padding:9px 8px;text-align:center;">{% if v.pain_score %}<span style="font-weight:700;{% if v.pain_score >= 7 %}color:#E53E3E;{% elif v.pain_score >= 4 %}color:#D69E2E;{% endif %}">{{ v.pain_score }}/10</span>{% else %}—{% endif %}</td>
+          <td style="padding:9px 8px;text-align:center;font-size:11px;color:var(--text-muted);">{{ v.recorded_at|time:"H:i" }}</td>
+          <td style="padding:9px 8px;">{% if v.is_critical %}<span style="background:#FED7D7;color:#C53030;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;">⚠ Critical</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+<div style="text-align:center;margin:24px 0;">
+  <a href="?mode=deep" style="display:inline-flex;align-items:center;gap:10px;
+     background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;
+     border-radius:14px;padding:13px 28px;font-size:14px;font-weight:700;text-decoration:none;
+     box-shadow:0 4px 20px rgba(10,92,138,.25);">
+    <i class="fas fa-search-plus"></i> Deep Dive — Add Vitals, Notes, Meds &amp; Materials
+  </a>
+</div>
+{% endif %}
+
+{% if mode == 'deep' %}
+<div id="tabNav" style="display:flex;gap:2px;background:#F0F4F8;border:1px solid var(--border);
+     border-radius:14px;padding:4px;margin-bottom:20px;position:sticky;top:64px;z-index:90;
+     overflow-x:auto;box-shadow:0 4px 12px rgba(0,0,0,.06);">
+  {% for tab_id, tab_label, tab_icon, tab_count in tabs %}
+  <button onclick="showTab('{{ tab_id }}')" id="tab-btn-{{ tab_id }}"
+          style="flex:1;min-width:110px;padding:10px 14px;border:none;border-radius:10px;
+                 font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .2s;
+                 display:flex;align-items:center;justify-content:center;gap:6px;
+                 background:{% if forloop.first %}var(--primary){% else %}transparent{% endif %};
+                 color:{% if forloop.first %}#fff{% else %}var(--text-muted){% endif %};">
+    <i class="fas {{ tab_icon }}"></i> {{ tab_label }}
+    {% if tab_count %}<span style="background:rgba(0,0,0,.1);border-radius:20px;padding:1px 7px;font-size:11px;">{{ tab_count }}</span>{% endif %}
+  </button>
+  {% endfor %}
+</div>
+
+<!-- VITALS TAB -->
+<div id="tab-vitals" class="tab-pane">
+  <div class="card-abi mb-4" style="border-top:3px solid var(--accent);">
+    <div class="card-header-abi"><i class="fas fa-plus-circle" style="color:var(--accent);"></i><h2>Record Vitals</h2></div>
+    <div class="card-body-abi">
+      <div class="row g-3">
+        <div class="col-12"><label class="form-label">Patient Hospital Number *</label>
+          <input type="text" id="v_patient" class="form-control" style="max-width:280px;" placeholder="ABI-2025-00001" /></div>
+        <div class="col-6 col-md-2"><label class="form-label" title="Normal: 36.1-37.2°C">🌡 Temp °C</label><input type="number" step="0.1" id="v_temp" class="form-control" placeholder="36.6" /></div>
+        <div class="col-6 col-md-2"><label class="form-label" title="Normal: 60-100 bpm">⚡ Pulse</label><input type="number" id="v_pulse" class="form-control" placeholder="72" /></div>
+        <div class="col-6 col-md-2"><label class="form-label">💨 Resp Rate</label><input type="number" id="v_rr" class="form-control" placeholder="16" /></div>
+        <div class="col-6 col-md-2"><label class="form-label" title="Normal: 95-100%">🫁 SpO2 %</label><input type="number" step="0.1" id="v_spo2" class="form-control" placeholder="98" /></div>
+        <div class="col-6 col-md-2"><label class="form-label">❤ BP Sys</label><input type="number" id="v_bps" class="form-control" placeholder="120" /></div>
+        <div class="col-6 col-md-2"><label class="form-label">BP Dia</label><input type="number" id="v_bpd" class="form-control" placeholder="80" /></div>
+        <div class="col-6 col-md-2"><label class="form-label">🩸 Sugar mmol</label><input type="number" step="0.1" id="v_sugar" class="form-control" placeholder="5.5" /></div>
+        <div class="col-6 col-md-2"><label class="form-label">⚖ Weight kg</label><input type="number" step="0.1" id="v_weight" class="form-control" /></div>
+        <div class="col-6 col-md-2"><label class="form-label">😣 Pain 0-10</label><input type="number" min="0" max="10" id="v_pain" class="form-control" /></div>
+        <div class="col-6 col-md-2"><label class="form-label">🚿 Urine ml</label><input type="number" id="v_urine" class="form-control" /></div>
+        <div class="col-6 col-md-2"><label class="form-label">Consciousness</label>
+          <select id="v_consciousness" class="form-select">
+            <option value="">—</option><option value="alert">Alert</option>
+            <option value="voice">Responds to Voice</option><option value="pain">Responds to Pain</option>
+            <option value="unresponsive">Unresponsive</option>
+          </select></div>
+        <div class="col-12"><label class="form-label">Notes</label>
+          <input type="text" id="v_notes" class="form-control" placeholder="Any observations..." /></div>
+        <div class="col-12">
+          <button onclick="saveVitals()" style="background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
+            <i class="fas fa-save"></i> Save Vitals</button>
+          <span id="vitals_saving" style="display:none;margin-left:12px;font-size:13px;color:var(--text-muted);">Saving…</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card-abi">
+    <div class="card-header-abi"><h2>Vitals This Shift</h2></div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead><tr style="background:#F7FAFC;border-bottom:1px solid var(--border);">
+          <th style="padding:9px 14px;text-align:left;font-weight:600;color:var(--text-muted);">Patient</th>
+          <th style="padding:9px 8px;text-align:center;color:var(--text-muted);">Temp</th>
+          <th style="padding:9px 8px;text-align:center;color:var(--text-muted);">BP</th>
+          <th style="padding:9px 8px;text-align:center;color:var(--text-muted);">Pulse</th>
+          <th style="padding:9px 8px;text-align:center;color:var(--text-muted);">RR</th>
+          <th style="padding:9px 8px;text-align:center;color:var(--text-muted);">SpO2</th>
+          <th style="padding:9px 8px;text-align:center;color:var(--text-muted);">Sugar</th>
+          <th style="padding:9px 8px;text-align:center;color:var(--text-muted);">Pain</th>
+          <th style="padding:9px 8px;text-align:center;color:var(--text-muted);">Time</th>
+          <th style="padding:9px 8px;"></th>
+        </tr></thead>
+        <tbody id="vitalsBody">
+          {% for v in vitals %}
+          <tr style="border-bottom:1px solid var(--border);{% if v.is_critical %}background:#FFF5F5;{% endif %}">
+            <td style="padding:9px 14px;font-weight:600;font-size:13px;">
+              <a href="{% url 'patient_detail:detail' v.patient.hospital_number %}" style="color:{% if v.is_critical %}#C53030{% else %}var(--dark){% endif %};text-decoration:none;">{{ v.patient.full_name }}</a>
+            </td>
+            <td style="padding:9px 8px;text-align:center;{% if v.temperature and v.temperature > 38 %}color:#E53E3E;font-weight:700;{% endif %}">{{ v.temperature|default:"—" }}{% if v.temperature %}°{% endif %}</td>
+            <td style="padding:9px 8px;text-align:center;{% if v.blood_pressure_sys and v.blood_pressure_sys > 160 %}color:#E53E3E;font-weight:700;{% endif %}">{{ v.blood_pressure|default:"—" }}</td>
+            <td style="padding:9px 8px;text-align:center;">{{ v.pulse_rate|default:"—" }}</td>
+            <td style="padding:9px 8px;text-align:center;">{{ v.respiratory_rate|default:"—" }}</td>
+            <td style="padding:9px 8px;text-align:center;{% if v.oxygen_saturation and v.oxygen_saturation < 94 %}color:#E53E3E;font-weight:700;{% endif %}">{{ v.oxygen_saturation|default:"—" }}{% if v.oxygen_saturation %}%{% endif %}</td>
+            <td style="padding:9px 8px;text-align:center;">{{ v.blood_glucose|default:"—" }}</td>
+            <td style="padding:9px 8px;text-align:center;">{% if v.pain_score %}<span style="font-weight:700;{% if v.pain_score >= 7 %}color:#E53E3E;{% elif v.pain_score >= 4 %}color:#D69E2E;{% endif %}">{{ v.pain_score }}/10</span>{% else %}—{% endif %}</td>
+            <td style="padding:9px 8px;text-align:center;font-size:11px;color:var(--text-muted);">{{ v.recorded_at|time:"H:i" }}</td>
+            <td style="padding:9px 8px;">{% if v.is_critical %}<span style="background:#FED7D7;color:#C53030;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;">⚠</span>{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr id="vitals-empty"><td colspan="10" style="padding:36px;text-align:center;color:var(--text-muted);">No vitals yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- NOTES TAB -->
+<div id="tab-notes" class="tab-pane" style="display:none;">
+  <div class="card-abi mb-4" style="border-top:3px solid #805AD5;">
+    <div class="card-header-abi">
+      <i class="fas fa-microphone" style="color:#805AD5;"></i><h2>Add Nursing Note</h2>
+      <span style="margin-left:auto;font-size:12px;color:var(--text-muted);">Speak or type — both work</span>
+    </div>
+    <div class="card-body-abi">
+      <div class="row g-3">
+        <div class="col-md-5"><label class="form-label">Patient Hospital Number *</label>
+          <input type="text" id="n_patient" class="form-control" placeholder="ABI-2025-00001" /></div>
+        <div class="col-md-4"><label class="form-label">Note Type</label>
+          <select id="n_type" class="form-select">
+            {% for val, label in note_type_choices %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+          </select></div>
+        <div class="col-md-3" style="display:flex;align-items:flex-end;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:10px 0;">
+            <input type="checkbox" id="n_flagged" style="width:16px;height:16px;accent-color:#805AD5;" />
+            <span>Flag for doctor</span>
+          </label></div>
+        <div class="col-12">
+          <label class="form-label">Note Content *</label>
+          <div style="position:relative;">
+            <textarea id="n_content" class="form-control" rows="4"
+                      placeholder="Type your note — or press the mic button to speak. Nigerian English recognised automatically."></textarea>
+            <button type="button" id="voiceBtn" onclick="toggleVoice()"
+                    title="Click to dictate — voice transcribes automatically"
+                    style="position:absolute;right:10px;bottom:10px;width:44px;height:44px;
+                           border-radius:50%;background:var(--primary);color:#fff;border:none;
+                           cursor:pointer;font-size:17px;display:flex;align-items:center;
+                           justify-content:center;box-shadow:0 3px 12px rgba(10,92,138,.35);transition:all .25s;">
+              <i class="fas fa-microphone" id="voiceIcon"></i>
+            </button>
+          </div>
+          <div id="voiceStatus" style="font-size:12px;color:var(--text-muted);margin-top:5px;min-height:18px;"></div>
+          <input type="hidden" id="n_was_voice" value="false" />
+        </div>
+        <div class="col-12">
+          <button onclick="saveNote()" style="background:#805AD5;color:#fff;border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
+            <i class="fas fa-save"></i> Save Note</button>
+          <span id="notes_saving" style="display:none;margin-left:12px;font-size:13px;color:var(--text-muted);">Saving…</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card-abi">
+    <div class="card-header-abi"><h2>Notes This Shift ({{ notes|length }})</h2></div>
+    <div id="notesContainer">
+      {% for note in notes %}
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border);{% if note.is_flagged %}background:#FAF5FF;border-left:3px solid #805AD5;{% endif %}">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+          <span style="font-weight:700;font-size:14px;">{{ note.patient.full_name }}</span>
+          <span style="background:#EBF4FF;color:var(--primary);border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;">{{ note.get_note_type_display }}</span>
+          {% if note.was_voice %}<span style="font-size:11px;color:#805AD5;"><i class="fas fa-microphone"></i> Voice</span>{% endif %}
+          {% if note.is_flagged %}<span style="font-size:11px;color:#805AD5;font-weight:700;"><i class="fas fa-flag"></i> Doctor</span>{% endif %}
+          <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">{{ note.created_at|time:"H:i" }}</span>
+        </div>
+        <div style="font-size:13px;line-height:1.65;white-space:pre-wrap;">{{ note.content }}</div>
+      </div>
+      {% empty %}
+      <div id="notes-empty" style="padding:36px;text-align:center;color:var(--text-muted);">No notes yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- MAR TAB -->
+<div id="tab-mar" class="tab-pane" style="display:none;">
+  <div class="card-abi mb-4" style="border-top:3px solid var(--primary);">
+    <div class="card-header-abi"><i class="fas fa-pills" style="color:var(--primary);"></i><h2>Record Medication</h2></div>
+    <div class="card-body-abi">
+      <div class="row g-3">
+        <div class="col-md-4"><label class="form-label">Patient *</label><input type="text" id="m_patient" class="form-control" placeholder="ABI-2025-00001" /></div>
+        <div class="col-md-4"><label class="form-label">Medication *</label><input type="text" id="m_drug" class="form-control" placeholder="Paracetamol 500mg" /></div>
+        <div class="col-md-2"><label class="form-label">Dosage</label><input type="text" id="m_dosage" class="form-control" placeholder="500mg" /></div>
+        <div class="col-md-2"><label class="form-label">Route</label>
+          <select id="m_route" class="form-select">{% for r in route_choices %}<option>{{ r }}</option>{% endfor %}</select></div>
+        <div class="col-md-3"><label class="form-label">Scheduled Time</label><input type="datetime-local" id="m_sched" class="form-control" /></div>
+        <div class="col-md-3"><label class="form-label">Given Time</label><input type="datetime-local" id="m_given" class="form-control" /></div>
+        <div class="col-md-3"><label class="form-label">Status</label>
+          <select id="m_status" class="form-select">{% for val, label in mar_status_choices %}<option value="{{ val }}">{{ label }}</option>{% endfor %}</select></div>
+        <div class="col-md-3"><label class="form-label">Reason (if not given)</label><input type="text" id="m_reason" class="form-control" /></div>
+        <div class="col-12">
+          <button onclick="saveMAR()" style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
+            <i class="fas fa-save"></i> Record</button>
+          <span id="mar_saving" style="display:none;margin-left:12px;font-size:13px;color:var(--text-muted);">Saving…</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card-abi">
+    <div class="card-header-abi"><h2>MAR This Shift ({{ mar|length }})</h2></div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead><tr style="background:#F7FAFC;border-bottom:1px solid var(--border);">
+          <th style="padding:9px 14px;text-align:left;font-weight:600;color:var(--text-muted);">Patient</th>
+          <th style="padding:9px 8px;font-weight:600;color:var(--text-muted);">Medication</th>
+          <th style="padding:9px 8px;font-weight:600;color:var(--text-muted);">Dose</th>
+          <th style="padding:9px 8px;font-weight:600;color:var(--text-muted);">Route</th>
+          <th style="padding:9px 8px;font-weight:600;color:var(--text-muted);">Scheduled</th>
+          <th style="padding:9px 8px;font-weight:600;color:var(--text-muted);">Given</th>
+          <th style="padding:9px 8px;font-weight:600;color:var(--text-muted);">Status</th>
+        </tr></thead>
+        <tbody id="marBody">
+          {% for m in mar %}
+          <tr style="border-bottom:1px solid var(--border);{% if m.status in 'withheld,missed,refused' %}background:#FFF5F5;{% elif m.status == 'late' %}background:#FFFBEB;{% endif %}">
+            <td style="padding:9px 14px;font-weight:600;">{{ m.patient.full_name }}</td>
+            <td style="padding:9px 8px;">{{ m.medication_name }}</td>
+            <td style="padding:9px 8px;font-size:12px;color:var(--text-muted);">{{ m.dosage }}</td>
+            <td style="padding:9px 8px;font-size:12px;color:var(--text-muted);">{{ m.route|default:"—" }}</td>
+            <td style="padding:9px 8px;font-size:12px;">{{ m.scheduled_time|time:"H:i" }}</td>
+            <td style="padding:9px 8px;font-size:12px;">{{ m.given_time|time:"H:i"|default:"—" }}</td>
+            <td style="padding:9px 8px;"><span style="border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;{% if m.status == 'given' %}background:#D1FAE5;color:#065F46;{% elif m.status in 'withheld,missed,refused' %}background:#FED7D7;color:#C53030;{% else %}background:#FEFCBF;color:#744210;{% endif %}">{{ m.get_status_display }}</span></td>
+          </tr>
+          {% empty %}
+          <tr id="mar-empty"><td colspan="7" style="padding:36px;text-align:center;color:var(--text-muted);">No MAR entries yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MATERIALS TAB -->
+<div id="tab-materials" class="tab-pane" style="display:none;">
+  <div class="card-abi mb-4" style="border-top:3px solid #D69E2E;">
+    <div class="card-header-abi"><i class="fas fa-box" style="color:#D69E2E;"></i><h2>Record Material Used</h2></div>
+    <div class="card-body-abi">
+      <div class="row g-3">
+        <div class="col-md-3"><label class="form-label">Patient (optional)</label><input type="text" id="mat_patient" class="form-control" placeholder="Hospital no. or blank for ward" /></div>
+        <div class="col-md-3"><label class="form-label">Category</label>
+          <select id="mat_category" class="form-select">{% for val, label in material_categories %}<option value="{{ val }}">{{ label }}</option>{% endfor %}</select></div>
+        <div class="col-md-3"><label class="form-label">Item Name *</label><input type="text" id="mat_name" class="form-control" placeholder="e.g. IV cannula 18G" /></div>
+        <div class="col-md-1"><label class="form-label">Qty</label><input type="number" id="mat_qty" class="form-control" value="1" min="0.1" step="0.1" /></div>
+        <div class="col-md-2"><label class="form-label">Unit</label><input type="text" id="mat_unit" class="form-control" placeholder="pcs / ml" /></div>
+        <div class="col-12">
+          <button onclick="saveMaterial()" style="background:#D69E2E;color:#fff;border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
+            <i class="fas fa-save"></i> Record Material</button>
+          <span id="mat_saving" style="display:none;margin-left:12px;font-size:13px;color:var(--text-muted);">Saving…</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card-abi">
+    <div class="card-header-abi"><h2>Materials Used This Shift ({{ materials|length }})</h2></div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead><tr style="background:#F7FAFC;border-bottom:1px solid var(--border);">
+          <th style="padding:9px 14px;text-align:left;font-weight:600;color:var(--text-muted);">Item</th>
+          <th style="padding:9px 8px;font-weight:600;color:var(--text-muted);">Category</th>
+          <th style="padding:9px 8px;font-weight:600;color:var(--text-muted);">Qty</th>
+          <th style="padding:9px 8px;font-weight:600;color:var(--text-muted);">Patient</th>
+          <th style="padding:9px 8px;font-weight:600;color:var(--text-muted);">Time</th>
+        </tr></thead>
+        <tbody id="materialsBody">
+          {% for mat in materials %}
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:9px 14px;font-weight:600;">{{ mat.item_name }}</td>
+            <td style="padding:9px 8px;"><span style="background:#F7FAFC;color:var(--text-muted);border-radius:20px;padding:2px 9px;font-size:11px;">{{ mat.get_category_display }}</span></td>
+            <td style="padding:9px 8px;">{{ mat.quantity }} {{ mat.unit }}</td>
+            <td style="padding:9px 8px;font-size:12px;color:var(--text-muted);">{{ mat.patient.full_name|default:"Ward (general)" }}</td>
+            <td style="padding:9px 8px;font-size:12px;color:var(--text-muted);">{{ mat.recorded_at|time:"H:i" }}</td>
+          </tr>
+          {% empty %}
+          <tr id="mat-empty"><td colspan="5" style="padding:36px;text-align:center;color:var(--text-muted);">No materials recorded yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- HANDOVER MODAL -->
+<div id="handoverModal" style="display:none;position:fixed;inset:0;background:rgba(10,20,30,.6);
+     backdrop-filter:blur(4px);z-index:600;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:20px;width:100%;max-width:620px;
+              box-shadow:0 32px 80px rgba(0,0,0,.4);max-height:90vh;overflow-y:auto;">
+    <div style="background:linear-gradient(135deg,#276749,#00856A);padding:22px 28px;">
+      <div style="font-size:20px;font-weight:800;color:#fff;"><i class="fas fa-exchange-alt"></i> Submit &amp; Hand Over</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.7);margin-top:4px;">Complete before handing to the next shift.</div>
+    </div>
+    <div style="padding:24px;">
+      <form method="post" action="{% url 'nursing:submit_shift' report.pk %}">
+        {% csrf_token %}
+        <div class="row g-3">
+          <div class="col-md-4"><label class="form-label">Admitted</label>
+            <input type="number" name="patients_admitted" class="form-control" value="{{ report.patients_admitted }}" min="0" /></div>
+          <div class="col-md-4"><label class="form-label">Discharged</label>
+            <input type="number" name="patients_discharged" class="form-control" value="{{ report.patients_discharged }}" min="0" /></div>
+          <div class="col-md-4"><label class="form-label">On Ward</label>
+            <input type="number" name="patients_on_ward" class="form-control" value="{{ report.patients_on_ward }}" min="0" /></div>
+          <div class="col-12">
+            <label class="form-label">Handover Summary * <span style="font-size:11px;font-weight:400;color:var(--text-muted);">(or speak with mic)</span></label>
+            <div style="position:relative;">
+              <textarea name="handover_summary" id="handover_text" class="form-control" rows="4" required
+                        placeholder="Key events, patient status, what next shift needs to know…">{{ report.handover_summary }}</textarea>
+              <button type="button" onclick="toggleHandoverVoice()" id="handoverVoiceBtn"
+                      style="position:absolute;right:10px;bottom:10px;width:38px;height:38px;border-radius:50%;
+                             background:var(--primary);color:#fff;border:none;cursor:pointer;
+                             display:flex;align-items:center;justify-content:center;font-size:15px;">
+                <i class="fas fa-microphone" id="handoverVoiceIcon"></i>
+              </button>
+            </div>
+            <div id="handoverVoiceStatus" style="font-size:12px;color:var(--text-muted);margin-top:4px;min-height:16px;"></div>
+          </div>
+          <div class="col-12"><label class="form-label">Outstanding Tasks</label>
+            <textarea name="outstanding_tasks" class="form-control" rows="2" placeholder="Tasks not completed…">{{ report.outstanding_tasks }}</textarea></div>
+          <div class="col-12"><label class="form-label">Incidents / Events</label>
+            <textarea name="incidents" class="form-control" rows="2" placeholder="Any incidents, falls, unusual events…">{{ report.incidents }}</textarea></div>
+          <div class="col-12" style="display:flex;gap:10px;justify-content:flex-end;padding-top:4px;">
+            <button type="button" onclick="document.getElementById('handoverModal').style.display='none'"
+                    style="background:#fff;color:var(--dark);border:1.5px solid var(--border);border-radius:10px;
+                           padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+            <button type="submit" style="background:linear-gradient(135deg,#276749,#1C4532);color:#fff;border:none;
+                    border-radius:10px;padding:10px 24px;font-size:14px;font-weight:800;cursor:pointer;
+                    display:flex;align-items:center;gap:8px;">
+              <i class="fas fa-check-double"></i> Submit &amp; Hand Over</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+const REPORT_PK = {{ report.pk }};
+const CSRF = '{{ csrf_token }}';
+
+// Handover modal
+const openBtn = document.getElementById('openHandoverBtn');
+if (openBtn) openBtn.onclick = () => { document.getElementById('handoverModal').style.display = 'flex'; };
+
+// Tab switching
+const TABS = ['vitals','notes','mar','materials'];
+function showTab(id) {
+  TABS.forEach(t => {
+    const p = document.getElementById('tab-' + t);
+    const b = document.getElementById('tab-btn-' + t);
+    if (p) p.style.display = t === id ? 'block' : 'none';
+    if (b) { b.style.background = t === id ? 'var(--primary)' : 'transparent';
+              b.style.color = t === id ? '#fff' : 'var(--text-muted)'; }
+  });
+  history.replaceState(null,'',`?mode=deep#tab-${id}`);
+}
+const hash = location.hash.replace('#tab-','');
+if (TABS.includes(hash)) showTab(hash);
+
+// AJAX helper
+async function postData(url, data) {
+  const b = new URLSearchParams({...data, csrfmiddlewaretoken: CSRF});
+  const r = await fetch(url, {method:'POST', body:b});
+  return r.json();
+}
+function setSaving(id, on) { const e = document.getElementById(id); if(e) e.style.display=on?'inline':'none'; }
+
+function flash(msg, type='success') {
+  const d = document.createElement('div');
+  d.style.cssText=`position:fixed;bottom:20px;right:20px;z-index:999;
+    background:${type==='success'?'#276749':'#C53030'};color:#fff;
+    padding:12px 20px;border-radius:12px;font-size:13px;font-weight:700;
+    box-shadow:0 8px 24px rgba(0,0,0,.25);animation:slideUp .3s ease;`;
+  d.textContent = msg;
+  document.body.appendChild(d);
+  setTimeout(()=>d.remove(), 3000);
+}
+
+// Save Vitals
+async function saveVitals() {
+  const patient = document.getElementById('v_patient').value.trim();
+  if (!patient) { flash('Enter a patient hospital number','error'); return; }
+  setSaving('vitals_saving',true);
+  const data = {
+    patient_hospital_number:patient,
+    temperature:document.getElementById('v_temp').value,
+    pulse_rate:document.getElementById('v_pulse').value,
+    respiratory_rate:document.getElementById('v_rr').value,
+    blood_pressure_sys:document.getElementById('v_bps').value,
+    blood_pressure_dia:document.getElementById('v_bpd').value,
+    oxygen_saturation:document.getElementById('v_spo2').value,
+    blood_glucose:document.getElementById('v_sugar').value,
+    weight_kg:document.getElementById('v_weight').value,
+    pain_score:document.getElementById('v_pain').value,
+    urine_output_ml:document.getElementById('v_urine').value,
+    consciousness:document.getElementById('v_consciousness').value,
+    notes:document.getElementById('v_notes').value,
+  };
+  const r = await postData(`/nursing/shifts/${REPORT_PK}/vitals/`, data);
+  setSaving('vitals_saving',false);
+  if (r.ok) {
+    const e = document.getElementById('vitals-empty'); if(e) e.remove();
+    const row = document.createElement('tr');
+    row.style.borderBottom='1px solid var(--border)';
+    if(r.is_critical) row.style.background='#FFF5F5';
+    row.innerHTML=`<td style="padding:9px 14px;font-weight:600;">${r.patient}</td>
+      <td style="padding:9px 8px;text-align:center;">${data.temperature?data.temperature+'°':'—'}</td>
+      <td style="padding:9px 8px;text-align:center;">${r.bp||'—'}</td>
+      <td style="padding:9px 8px;text-align:center;">${data.pulse_rate||'—'}</td>
+      <td style="padding:9px 8px;text-align:center;">${data.respiratory_rate||'—'}</td>
+      <td style="padding:9px 8px;text-align:center;">${data.oxygen_saturation?data.oxygen_saturation+'%':'—'}</td>
+      <td style="padding:9px 8px;text-align:center;">${data.blood_glucose||'—'}</td>
+      <td style="padding:9px 8px;text-align:center;">${data.pain_score||'—'}</td>
+      <td style="padding:9px 8px;text-align:center;font-size:11px;color:var(--text-muted);">${r.recorded_at}</td>
+      <td style="padding:9px 8px;">${r.is_critical?'<span style="background:#FED7D7;color:#C53030;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;">⚠</span>':''}</td>`;
+    document.getElementById('vitalsBody').prepend(row);
+    ['v_patient','v_temp','v_pulse','v_rr','v_spo2','v_bps','v_bpd','v_sugar','v_weight','v_pain','v_urine','v_notes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    document.getElementById('v_consciousness').value='';
+    flash(r.is_critical?`⚠ Critical vitals saved for ${r.patient}`:`✓ Vitals saved for ${r.patient}`, r.is_critical?'error':'success');
+  } else { flash('Error: '+(r.error||'Could not save'),'error'); }
+}
+
+// Voice
+let recog=null, isListening=false, targetEl=null;
+function startVoice(textareaId,btnId,iconId,statusId) {
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){document.getElementById(statusId).textContent='⚠ Voice not supported. Use Chrome on desktop or Android.';return;}
+  if(isListening){recog&&recog.stop();return;}
+  targetEl=document.getElementById(textareaId);
+  recog=new SR(); recog.continuous=true; recog.interimResults=true; recog.lang='en-NG';
+  recog.onstart=()=>{
+    isListening=true;
+    document.getElementById(btnId).style.background='#E53E3E';
+    document.getElementById(btnId).style.animation='voicePulse 1s infinite';
+    document.getElementById(iconId).className='fas fa-stop';
+    document.getElementById(statusId).innerHTML='<span style="color:#E53E3E;font-weight:600;">🎙 Listening… speak clearly.</span>';
+    if(textareaId==='n_content') document.getElementById('n_was_voice').value='true';
+  };
+  recog.onresult=(e)=>{
+    let fin='',int='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      e.results[i].isFinal?fin+=e.results[i][0].transcript+' ':int+=e.results[i][0].transcript;
+    }
+    if(fin) targetEl.value+=fin;
+    document.getElementById(statusId).innerHTML=int?`<span style="color:var(--text-muted);">Hearing: "<em>${int}</em>"</span>`:'<span style="color:#E53E3E;font-weight:600;">🎙 Listening…</span>';
+  };
+  recog.onerror=(e)=>{document.getElementById(statusId).textContent=`Voice error: ${e.error}`;stopVoice(btnId,iconId,statusId);};
+  recog.onend=()=>stopVoice(btnId,iconId,statusId);
+  recog.start();
+}
+function stopVoice(b,i,s){
+  isListening=false;
+  const btn=document.getElementById(b); const ic=document.getElementById(i); const st=document.getElementById(s);
+  if(btn){btn.style.background='var(--primary)';btn.style.animation='';}
+  if(ic) ic.className='fas fa-microphone';
+  if(st) st.innerHTML='<span style="color:var(--success);">✓ Recording stopped.</span>';
+}
+function toggleVoice(){isListening?recog&&recog.stop():startVoice('n_content','voiceBtn','voiceIcon','voiceStatus');}
+function toggleHandoverVoice(){isListening?recog&&recog.stop():startVoice('handover_text','handoverVoiceBtn','handoverVoiceIcon','handoverVoiceStatus');}
+
+// Save Note
+async function saveNote() {
+  const patient=document.getElementById('n_patient').value.trim();
+  const content=document.getElementById('n_content').value.trim();
+  if(!patient||!content){flash('Patient and content required','error');return;}
+  setSaving('notes_saving',true);
+  const data={patient_hospital_number:patient,note_type:document.getElementById('n_type').value,
+    content,was_voice:document.getElementById('n_was_voice').value,
+    is_flagged:document.getElementById('n_flagged').checked?'true':'false'};
+  const r=await postData(`/nursing/shifts/${REPORT_PK}/note/`,data);
+  setSaving('notes_saving',false);
+  if(r.ok){
+    const e=document.getElementById('notes-empty');if(e)e.remove();
+    const d=document.createElement('div');
+    d.style.cssText=`padding:14px 20px;border-bottom:1px solid var(--border);${data.is_flagged==='true'?'background:#FAF5FF;border-left:3px solid #805AD5;':''}`;
+    d.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+      <span style="font-weight:700;font-size:14px;">${r.patient}</span>
+      <span style="background:#EBF4FF;color:var(--primary);border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;">${r.type}</span>
+      ${r.was_voice?'<span style="font-size:11px;color:#805AD5;"><i class="fas fa-microphone"></i> Voice</span>':''}
+      ${r.flagged?'<span style="font-size:11px;color:#805AD5;font-weight:700;"><i class="fas fa-flag"></i> Doctor</span>':''}
+      <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">${r.time}</span>
+    </div><div style="font-size:13px;line-height:1.65;">${r.content_preview}</div>`;
+    document.getElementById('notesContainer').prepend(d);
+    document.getElementById('n_patient').value=''; document.getElementById('n_content').value='';
+    document.getElementById('n_flagged').checked=false; document.getElementById('n_was_voice').value='false';
+    flash(r.flagged?'✓ Note saved & flagged for doctor':'✓ Note saved');
+  } else {flash('Error: '+(r.error||'Could not save'),'error');}
+}
+
+// Save MAR
+async function saveMAR(){
+  const patient=document.getElementById('m_patient').value.trim();
+  const drug=document.getElementById('m_drug').value.trim();
+  if(!patient||!drug){flash('Patient and medication required','error');return;}
+  setSaving('mar_saving',true);
+  const data={patient_hospital_number:patient,medication_name:drug,
+    dosage:document.getElementById('m_dosage').value,route:document.getElementById('m_route').value,
+    scheduled_time:document.getElementById('m_sched').value,given_time:document.getElementById('m_given').value,
+    status:document.getElementById('m_status').value,reason_withheld:document.getElementById('m_reason').value};
+  const r=await postData(`/nursing/shifts/${REPORT_PK}/mar/`,data);
+  setSaving('mar_saving',false);
+  if(r.ok){
+    const e=document.getElementById('mar-empty');if(e)e.remove();
+    const isIssue=['withheld','missed','refused'].includes(data.status);
+    const row=document.createElement('tr');
+    row.style.borderBottom='1px solid var(--border)'; if(isIssue)row.style.background='#FFF5F5';
+    row.innerHTML=`<td style="padding:9px 14px;font-weight:600;">${r.patient}</td>
+      <td style="padding:9px 8px;">${r.drug}</td><td style="padding:9px 8px;font-size:12px;color:var(--text-muted);">${data.dosage}</td>
+      <td style="padding:9px 8px;font-size:12px;color:var(--text-muted);">${data.route}</td>
+      <td style="padding:9px 8px;font-size:12px;">${r.time}</td>
+      <td style="padding:9px 8px;font-size:12px;">${data.given_time?data.given_time.split('T')[1]:'—'}</td>
+      <td style="padding:9px 8px;"><span style="border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;${data.status==='given'?'background:#D1FAE5;color:#065F46;':isIssue?'background:#FED7D7;color:#C53030;':'background:#FEFCBF;color:#744210;'}">${r.status}</span></td>`;
+    document.getElementById('marBody').prepend(row);
+    ['m_patient','m_drug','m_dosage','m_sched','m_given','m_reason'].forEach(id=>document.getElementById(id).value='');
+    flash(`✓ Medication recorded for ${r.patient}`);
+  } else {flash('Error: '+(r.error||'Could not save'),'error');}
+}
+
+// Save Material
+async function saveMaterial(){
+  const name=document.getElementById('mat_name').value.trim();
+  if(!name){flash('Item name required','error');return;}
+  setSaving('mat_saving',true);
+  const data={patient_hospital_number:document.getElementById('mat_patient').value.trim(),
+    category:document.getElementById('mat_category').value,item_name:name,
+    quantity:document.getElementById('mat_qty').value,unit:document.getElementById('mat_unit').value};
+  const r=await postData(`/nursing/shifts/${REPORT_PK}/material/`,data);
+  setSaving('mat_saving',false);
+  if(r.ok){
+    const e=document.getElementById('mat-empty');if(e)e.remove();
+    const row=document.createElement('tr');
+    row.style.borderBottom='1px solid var(--border)';
+    row.innerHTML=`<td style="padding:9px 14px;font-weight:600;">${r.item}</td>
+      <td style="padding:9px 8px;"><span style="background:#F7FAFC;color:var(--text-muted);border-radius:20px;padding:2px 9px;font-size:11px;">General</span></td>
+      <td style="padding:9px 8px;">${r.quantity} ${r.unit}</td>
+      <td style="padding:9px 8px;font-size:12px;color:var(--text-muted);">${r.patient}</td>
+      <td style="padding:9px 8px;font-size:12px;color:var(--text-muted);">Just now</td>`;
+    document.getElementById('materialsBody').prepend(row);
+    document.getElementById('mat_name').value=''; document.getElementById('mat_qty').value='1';
+    document.getElementById('mat_unit').value=''; document.getElementById('mat_patient').value='';
+    flash(`✓ ${r.item} recorded`);
+  } else {flash('Error: '+(r.error||'Could not save'),'error');}
+}
+
+const s=document.createElement('style');
+s.textContent=`@keyframes voicePulse{0%,100%{box-shadow:0 0 0 0 rgba(229,62,62,.5);}70%{box-shadow:0 0 0 12px rgba(229,62,62,0);}}@keyframes slideUp{from{transform:translateY(20px);opacity:0;}to{transform:translateY(0);opacity:1;}}`;
+document.head.appendChild(s);
+</script>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base/base.html" %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left"><h1>Create Duty Roster</h1>
+    <div class="breadcrumb-abi"><a href="{% url 'nursing:roster_list' %}">Rosters</a> › Create</div>
+  </div>
+  <a href="{% url 'nursing:roster_list' %}" class="btn-abi-outline"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+<div class="row justify-content-center"><div class="col-lg-7">
+  <div class="card-abi">
+    <div class="card-header-abi"><i class="fas fa-calendar-plus" style="color:var(--primary);"></i><h2>New Duty Roster</h2></div>
+    <div class="card-body-abi">
+      <form method="post" class="form-abi">
+        {% csrf_token %}
+        <div class="row g-3">
+          <div class="col-12"><label class="form-label">Roster Title *</label>
+            <input type="text" name="title" class="form-control" required placeholder="e.g. Week 3 July 2025 — Night Shift Schedule" /></div>
+          <div class="col-md-4"><label class="form-label">Ward</label>
+            <select name="ward" class="form-select">
+              {% for val, label in ward_choices %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+            </select></div>
+          <div class="col-md-4"><label class="form-label">Start Date *</label>
+            <input type="date" name="start_date" class="form-control" required /></div>
+          <div class="col-md-4"><label class="form-label">End Date *</label>
+            <input type="date" name="end_date" class="form-control" required /></div>
+          <div class="col-12"><label class="form-label">Notes / Instructions for Nurses</label>
+            <textarea name="notes" class="form-control" rows="3" placeholder="General instructions for this roster period..."></textarea></div>
+          <div class="col-12" style="display:flex;gap:10px;justify-content:flex-end;">
+            <a href="{% url 'nursing:roster_list' %}" class="btn-abi-outline">Cancel</a>
+            <button type="submit" class="btn-abi-primary"><i class="fas fa-save"></i> Create Roster</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div></div>
+{% endblock %}

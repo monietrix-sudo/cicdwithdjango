@@ -30,6 +30,7 @@ urlpatterns = [
     path('billing/',        include('apps.billing.urls',        namespace='billing')),
     path('',                include('apps.role_portals.urls',   namespace='role_portals')),
     path('families/',     include('apps.families.urls',     namespace='families')),
+    path('nursing/',     include('apps.nursing.urls',     namespace='nursing')),
     path('imports/',      include('apps.imports.urls',      namespace='imports')),
 ]
 

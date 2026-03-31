@@ -1,0 +1,35 @@
+{% extends "base/base.html" %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left"><h1>My Shift Reports</h1>
+    <div class="breadcrumb-abi"><a href="{% url 'nursing:dashboard' %}">Nursing</a> › Shifts</div>
+  </div>
+  <a href="{% url 'nursing:start_shift' %}" class="btn-abi-primary"><i class="fas fa-play"></i> Start New Shift</a>
+</div>
+<div class="card-abi">
+  <div class="card-body-abi" style="padding:0;">
+    <table class="table-abi">
+      <thead><tr><th>Date</th><th>Shift</th><th>Ward</th><th>Patients</th><th>Vitals</th><th>Notes</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for r in reports %}
+        <tr>
+          <td style="font-weight:600;">{{ r.date|date:"D, d M Y" }}</td>
+          <td>{{ r.get_shift_display }}</td>
+          <td style="font-size:13px;color:var(--text-muted);">{{ r.get_ward_display }}</td>
+          <td style="text-align:center;">{{ r.patients_on_ward }}</td>
+          <td style="text-align:center;">{{ r.vitals.count }}</td>
+          <td style="text-align:center;">{{ r.notes.count }}</td>
+          <td>{% if r.is_submitted %}<span class="badge-abi badge-success">Submitted</span>{% else %}<span class="badge-abi badge-warning">Open</span>{% endif %}</td>
+          <td>
+            <a href="{% url 'nursing:shift_report_detail' r.pk %}" class="btn-abi-outline" style="padding:5px 12px;font-size:12px;">View</a>
+            {% if r.is_submitted %}<a href="{% url 'nursing:handover' r.pk %}" class="btn-abi-outline" style="padding:5px 12px;font-size:12px;">Handover</a>{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" style="text-align:center;padding:48px;color:var(--text-muted);">No shift reports yet. <a href="{% url 'nursing:start_shift' %}">Start your first shift.</a></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

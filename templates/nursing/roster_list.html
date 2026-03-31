@@ -1,0 +1,37 @@
+{% extends "base/base.html" %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left"><h1>Duty Rosters</h1>
+    <div class="breadcrumb-abi"><a href="{% url 'nursing:dashboard' %}">Nursing</a> › Rosters</div>
+  </div>
+  {% if user.is_admin_staff or user.role == 'nurse' %}
+  <a href="{% url 'nursing:create_roster' %}" class="btn-abi-primary"><i class="fas fa-plus"></i> Create Roster</a>
+  {% endif %}
+</div>
+<div class="row g-3">
+  {% for roster in rosters %}
+  <div class="col-md-6">
+    <a href="{% url 'nursing:roster_detail' roster.pk %}" style="text-decoration:none;color:inherit;">
+      <div class="card-abi" style="transition:all .2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+        <div class="card-body-abi">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:44px;height:44px;border-radius:12px;background:#EBF4FF;color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">
+              <i class="fas fa-calendar-alt"></i>
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:14px;">{{ roster.title }}</div>
+              <div style="font-size:12px;color:var(--text-muted);">{{ roster.start_date|date:"M d" }} — {{ roster.end_date|date:"M d, Y" }} · {{ roster.entries.count }} shifts</div>
+            </div>
+            <span class="badge-abi {% if roster.status == 'confirmed' %}badge-success{% else %}badge-muted{% endif %}">
+              {{ roster.get_status_display }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% empty %}
+  <div class="col-12"><div class="card-abi"><div class="card-body-abi" style="text-align:center;padding:48px;color:var(--text-muted);">No rosters yet. <a href="{% url 'nursing:create_roster' %}">Create the first one.</a></div></div></div>
+  {% endfor %}
+</div>
+{% endblock %}

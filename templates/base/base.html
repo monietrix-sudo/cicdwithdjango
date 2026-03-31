@@ -1,4 +1,3 @@
-
 {% load static %}
 <!DOCTYPE html>
 <!--
@@ -547,8 +546,7 @@
   <div class="sidebar-header">
     <a href="{% url 'patients:dashboard' %}" class="sidebar-brand">
       <div class="sidebar-brand-icon">
-        <img src="{% static 'images/abicare-logop.jpg' %}" alt="hospital logo" style="height: 60px;border-radius: 25px;">
-
+        <img src="{% static 'images/abicare-logop.jpg' %}" alt="Description of image" style="height: 60px; border-radius: 25px;">
       </div>
       <div class="sidebar-brand-text">
         <div class="name">{{ HOSPITAL_NAME }}</div>
@@ -666,6 +664,27 @@
 
     <a href="{% url 'admin:index' %}" class="sidebar-link">
       <span class="nav-icon"><i class="fas fa-cogs"></i></span> Admin Panel
+    </a>
+    {% endif %}
+
+    <!-- ── NURSING ─────────────────────────────────────────── -->
+    {% if user.role == 'nurse' or user.is_admin_staff %}
+    <div class="sidebar-section-label">Nursing</div>
+    <a href="{% url 'nursing:dashboard' %}"
+       class="sidebar-link {% if 'nursing' in request.path and 'shift' not in request.path and 'roster' not in request.path %}active{% endif %}">
+      <span class="nav-icon"><i class="fas fa-notes-medical" style="color:#00856A;"></i></span> Nursing Dashboard
+    </a>
+    <a href="{% url 'nursing:start_shift' %}"
+       class="sidebar-link {% if 'nursing/shifts/start' in request.path %}active{% endif %}">
+      <span class="nav-icon"><i class="fas fa-play-circle"></i></span> Start Shift Report
+    </a>
+    <a href="{% url 'nursing:shift_list' %}"
+       class="sidebar-link {% if 'nursing/shifts' in request.path %}active{% endif %}">
+      <span class="nav-icon"><i class="fas fa-clipboard-list"></i></span> Shift Reports
+    </a>
+    <a href="{% url 'nursing:roster_list' %}"
+       class="sidebar-link {% if 'nursing/roster' in request.path %}active{% endif %}">
+      <span class="nav-icon"><i class="fas fa-calendar-alt"></i></span> Duty Rosters
     </a>
     {% endif %}
 

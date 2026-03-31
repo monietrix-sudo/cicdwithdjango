@@ -1,0 +1,65 @@
+{% extends "base/base.html" %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left"><h1>Start Shift Report</h1>
+    <div class="breadcrumb-abi"><a href="{% url 'nursing:dashboard' %}">Nursing</a> › Start Shift</div>
+  </div>
+</div>
+<div class="row justify-content-center"><div class="col-lg-6">
+  <div class="card-abi">
+    <div class="card-header-abi" style="background:linear-gradient(135deg,#276749,#00856A);">
+      <i class="fas fa-play-circle" style="color:#fff;"></i><h2 style="color:#fff;">Begin Your Shift</h2>
+    </div>
+    <div class="card-body-abi">
+      {% if shift_entry %}
+      <div style="background:#F0FFF4;border:1px solid #9AE6B4;border-left:4px solid var(--success);
+                  border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#276749;">
+        <i class="fas fa-calendar-check"></i>
+        <strong>Roster found!</strong> You are scheduled for
+        <strong>{{ shift_entry.get_shift_display }}</strong>
+        {% if shift_entry.ward %}in <strong>{{ shift_entry.get_ward_display }}</strong>{% endif %}
+        today. Fields pre-filled.
+      </div>
+      {% endif %}
+      <form method="post" class="form-abi">
+        {% csrf_token %}
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Shift *</label>
+            <select name="shift" class="form-select" required>
+              {% for val, label in shift_choices %}
+              <option value="{{ val }}" {% if shift_entry and shift_entry.shift == val %}selected{% elif not shift_entry and val == current_shift %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Ward</label>
+            <select name="ward" class="form-select">
+              <option value="">— Select —</option>
+              {% for val, label in ward_choices %}
+              <option value="{{ val }}" {% if shift_entry and shift_entry.ward == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Patients Currently on Ward</label>
+            <input type="number" name="patients_on_ward" class="form-control" value="0" min="0" />
+          </div>
+          <div class="col-12">
+            <label class="form-label">General Ward Notes (optional)</label>
+            <textarea name="general_ward_notes" class="form-control" rows="3"
+                      placeholder="Any notes from the previous handover to start with..."></textarea>
+          </div>
+          <div class="col-12" style="display:flex;gap:10px;justify-content:flex-end;">
+            <a href="{% url 'nursing:dashboard' %}" class="btn-abi-outline">Cancel</a>
+            <button type="submit" style="background:linear-gradient(135deg,#276749,#1C4532);color:#fff;border:none;
+                    border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;">
+              <i class="fas fa-play"></i> Start Shift
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div></div>
+{% endblock %}

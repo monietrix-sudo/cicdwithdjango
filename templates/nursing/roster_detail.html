@@ -1,0 +1,115 @@
+{% extends "base/base.html" %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>{{ roster.title }}</h1>
+    <div class="breadcrumb-abi"><a href="{% url 'nursing:roster_list' %}">Rosters</a> › {{ roster.title }}</div>
+  </div>
+  <div style="display:flex;gap:10px;">
+    {% if roster.status == 'draft' %}
+    <a href="{% url 'nursing:confirm_roster' roster.pk %}"
+       style="background:linear-gradient(135deg,var(--success),#276749);color:#fff;border:none;border-radius:10px;
+              padding:9px 18px;font-size:13px;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:8px;">
+      <i class="fas fa-paper-plane"></i> Confirm &amp; Distribute to Nurses
+    </a>
+    {% else %}
+    <span style="background:#F0FFF4;border:1px solid #9AE6B4;color:var(--success);padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;">
+      <i class="fas fa-check-circle"></i> Confirmed {{ roster.confirmed_at|date:"M d, Y" }}
+    </span>
+    {% endif %}
+  </div>
+</div>
+
+<div style="display:flex;gap:16px;flex-wrap:wrap;background:#F7FAFC;border-radius:10px;padding:14px 20px;margin-bottom:20px;font-size:13px;">
+  <div><span style="color:var(--text-muted);">Ward:</span> <strong>{{ roster.get_ward_display }}</strong></div>
+  <div><span style="color:var(--text-muted);">Period:</span> <strong>{{ roster.start_date|date:"M d" }} — {{ roster.end_date|date:"M d, Y" }}</strong></div>
+  <div><span style="color:var(--text-muted);">Total shifts:</span> <strong>{{ roster.entries.count }}</strong></div>
+  <div><span style="color:var(--text-muted);">Created by:</span> <strong>{{ roster.created_by.get_full_name }}</strong></div>
+</div>
+
+{% if roster.notes %}
+<div style="background:#EBF4FF;border-left:4px solid var(--primary);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;">
+  <strong>Notes:</strong> {{ roster.notes }}
+</div>
+{% endif %}
+
+<!-- Schedule table by date -->
+{% if grouped %}
+<div class="card-abi">
+  <div class="card-body-abi" style="padding:0;overflow-x:auto;">
+    <table class="table-abi" style="min-width:500px;">
+      <thead><tr><th>Date</th><th>Nurse</th><th>Shift</th><th>Ward</th><th>Notes</th></tr></thead>
+      <tbody>
+        {% for date, day_entries in grouped.items %}
+        {% for entry in day_entries %}
+        <tr style="{% if entry.shift == 'off' %}opacity:.5;{% endif %}">
+          {% if forloop.first %}<td style="font-weight:700;font-size:13px;" rowspan="{{ day_entries|length }}">{{ date|date:"D d M" }}</td>{% endif %}
+          <td style="font-weight:600;">{{ entry.nurse.get_full_name }}</td>
+          <td><span class="badge-abi {% if entry.shift == 'off' %}badge-muted{% elif entry.shift == 'night' %}badge-primary{% else %}badge-success{% endif %}" style="font-size:10px;">{{ entry.get_shift_display }}</span></td>
+          <td style="font-size:12px;color:var(--text-muted);">{{ entry.get_ward_display|default:"—" }}</td>
+          <td style="font-size:12px;color:var(--text-muted);">{{ entry.notes|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card-abi"><div class="card-body-abi" style="text-align:center;padding:48px;color:var(--text-muted);">No shifts assigned yet. Add nurse assignments below.</div></div>
+{% endif %}
+
+<!-- Add entry form (draft only) -->
+{% if roster.status == 'draft' %}
+<div class="card-abi mt-4">
+  <div class="card-header-abi"><i class="fas fa-user-plus" style="color:var(--primary);"></i><h2>Add Nurse Assignment</h2></div>
+  <div class="card-body-abi">
+    <div class="row g-3">
+      <div class="col-md-3"><label class="form-label">Nurse</label>
+        <select id="re_nurse" class="form-select">
+          {% for entry in entries %}<option value="{{ entry.nurse.pk }}">{{ entry.nurse.get_full_name }}</option>{% endfor %}
+        </select></div>
+      <div class="col-md-3"><label class="form-label">Date</label><input type="date" id="re_date" class="form-control" /></div>
+      <div class="col-md-3"><label class="form-label">Shift</label>
+        <select id="re_shift" class="form-select">
+          <option value="morning">Morning 07:00–15:00</option>
+          <option value="afternoon">Afternoon 15:00–23:00</option>
+          <option value="night">Night 23:00–07:00</option>
+          <option value="day">Day 07:00–19:00</option>
+          <option value="off">Day Off</option>
+        </select></div>
+      <div class="col-md-3" style="display:flex;align-items:flex-end;">
+        <button onclick="addEntry()" class="btn-abi-primary" style="width:100%;justify-content:center;">
+          <i class="fas fa-plus"></i> Add
+        </button>
+      </div>
+    </div>
+    <div id="addMsg" style="margin-top:10px;font-size:13px;"></div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+{% block extra_js %}
+<script>
+async function addEntry() {
+  const body = new URLSearchParams({
+    nurse_id: document.getElementById('re_nurse').value,
+    date:     document.getElementById('re_date').value,
+    shift:    document.getElementById('re_shift').value,
+    csrfmiddlewaretoken: '{{ csrf_token }}',
+  });
+  const r = await fetch('{% url "nursing:add_roster_entry" roster.pk %}', { method:'POST', body });
+  const d = await r.json();
+  const msg = document.getElementById('addMsg');
+  if (d.ok) {
+    msg.style.color = 'var(--success)';
+    msg.textContent = `✓ Added: ${d.nurse} — ${d.date} (${d.shift})`;
+    setTimeout(() => location.reload(), 1200);
+  } else {
+    msg.style.color = '#E53E3E';
+    msg.textContent = 'Error: ' + (d.error || 'Could not add');
+  }
+}
+</script>
+{% endblock %}

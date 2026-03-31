@@ -1,0 +1,297 @@
+{% extends "base/base.html" %}
+{% block content %}
+
+{# ── SMART WELCOME ──────────────────────────────────────────────────── #}
+<div style="background:linear-gradient(135deg,#0D4F3C,#276749,#00856A);
+            border-radius:20px;padding:28px 32px;margin-bottom:24px;
+            position:relative;overflow:hidden;">
+  {# Decorative circles #}
+  <div style="position:absolute;right:-40px;top:-40px;width:180px;height:180px;
+              border-radius:50%;background:rgba(255,255,255,.05);"></div>
+  <div style="position:absolute;right:60px;bottom:-60px;width:240px;height:240px;
+              border-radius:50%;background:rgba(255,255,255,.04);"></div>
+
+  <div style="position:relative;z-index:1;">
+    <div style="font-size:13px;color:rgba(255,255,255,.65);margin-bottom:3px;font-weight:500;">
+      {{ today|date:"l, F j, Y" }}
+    </div>
+    <div style="font-size:30px;font-weight:900;color:#fff;line-height:1.1;">
+      {{ greeting }}, {{ nurse.first_name }}
+    </div>
+
+    {% if shift_entry %}
+    <div style="margin-top:12px;display:inline-flex;align-items:center;gap:10px;
+                background:rgba(255,255,255,.12);backdrop-filter:blur(8px);
+                border:1px solid rgba(255,255,255,.2);border-radius:30px;padding:8px 18px;">
+      <div style="width:8px;height:8px;border-radius:50%;background:#A8F0CC;
+                  animation:blink 2s infinite;"></div>
+      <span style="font-size:13px;color:#E6FFEF;font-weight:600;">
+        On roster today: <strong>{{ shift_entry.get_shift_display }}</strong>
+        {% if shift_entry.ward %}&nbsp;·&nbsp;{{ shift_entry.get_ward_display }}{% endif %}
+      </span>
+    </div>
+    {% else %}
+    <div style="margin-top:12px;display:inline-flex;align-items:center;gap:8px;
+                background:rgba(255,255,255,.08);border-radius:30px;padding:8px 16px;">
+      <i class="fas fa-clock" style="color:rgba(255,255,255,.6);font-size:12px;"></i>
+      <span style="font-size:13px;color:rgba(255,255,255,.75);">
+        No roster assigned today — shift auto-detected as
+        <strong style="color:#fff;">{{ current_shift|capfirst }}</strong>
+      </span>
+    </div>
+    {% endif %}
+
+    <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;">
+      {% if todays_report %}
+      <a href="{% url 'nursing:shift_report_detail' todays_report.pk %}"
+         style="background:#fff;color:#276749;border:none;border-radius:12px;
+                padding:10px 20px;font-size:13px;font-weight:800;text-decoration:none;
+                display:flex;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,.2);">
+        <i class="fas fa-clipboard-check"></i> Continue Shift Report
+      </a>
+      {% else %}
+      <a href="{% url 'nursing:start_shift' %}"
+         style="background:#fff;color:#276749;border:none;border-radius:12px;
+                padding:10px 20px;font-size:13px;font-weight:800;text-decoration:none;
+                display:flex;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,.2);">
+        <i class="fas fa-play-circle"></i> Start Shift Report
+      </a>
+      {% endif %}
+      <a href="{% url 'nursing:roster_list' %}"
+         style="background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.3);
+                border-radius:12px;padding:10px 18px;font-size:13px;font-weight:600;
+                text-decoration:none;display:flex;align-items:center;gap:8px;">
+        <i class="fas fa-calendar-alt"></i> Duty Rosters
+      </a>
+      <a href="{% url 'nursing:shift_list' %}"
+         style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);
+                border:1.5px solid rgba(255,255,255,.2);border-radius:12px;
+                padding:10px 18px;font-size:13px;font-weight:600;
+                text-decoration:none;display:flex;align-items:center;gap:8px;">
+        <i class="fas fa-history"></i> Past Shifts
+      </a>
+    </div>
+  </div>
+</div>
+
+{# ── CRITICAL ALERT — shown first, only if needed (anti-alert-fatigue) ── #}
+{% if critical_vitals %}
+<div style="background:#FFF5F5;border:2px solid #FED7D7;border-left:5px solid #E53E3E;
+            border-radius:14px;padding:16px 20px;margin-bottom:20px;">
+  <div style="font-weight:800;font-size:15px;color:#C53030;margin-bottom:10px;">
+    <i class="fas fa-exclamation-triangle"></i>
+    {{ critical_vitals|length }} Patient{{ critical_vitals|length|pluralize }} with Critical Vitals
+  </div>
+  {% for v in critical_vitals %}
+  <div style="display:flex;align-items:center;gap:14px;padding:8px 0;
+              border-bottom:1px solid #FED7D7;font-size:13px;">
+    <a href="{% url 'patient_detail:detail' v.patient.hospital_number %}"
+       style="font-weight:700;color:#C53030;min-width:160px;text-decoration:none;">
+      {{ v.patient.full_name }}
+    </a>
+    <div style="flex:1;color:#742A2A;font-size:12px;">
+      {% if v.temperature %}<span style="margin-right:10px;">🌡 {{ v.temperature }}°C</span>{% endif %}
+      {% if v.blood_pressure %}<span style="margin-right:10px;">❤ {{ v.blood_pressure }} mmHg</span>{% endif %}
+      {% if v.oxygen_saturation %}<span style="margin-right:10px;">💨 {{ v.oxygen_saturation }}%</span>{% endif %}
+      {% if v.pulse_rate %}<span>⚡ {{ v.pulse_rate }} bpm</span>{% endif %}
+    </div>
+    <span style="font-size:11px;color:#E53E3E;font-weight:600;">{{ v.recorded_at|time:"H:i" }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── STATS ROW ──────────────────────────────────────────────────────── #}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));
+            gap:14px;margin-bottom:24px;">
+
+  <div class="stat-card" style="cursor:default;">
+    <div class="stat-icon teal"><i class="fas fa-heartbeat"></i></div>
+    <div>
+      <div class="stat-value">{{ recent_vitals|length }}</div>
+      <div class="stat-label">Vitals Today</div>
+    </div>
+  </div>
+
+  <div class="stat-card" style="cursor:default;">
+    <div class="stat-icon blue"><i class="fas fa-pills"></i></div>
+    <div>
+      <div class="stat-value">{{ todays_mar|length }}</div>
+      <div class="stat-label">Meds Recorded</div>
+    </div>
+  </div>
+
+  <div class="stat-card" style="{% if pending_mar %}border:2px solid #F6AD55;{% endif %}cursor:default;">
+    <div class="stat-icon" style="background:#FFFBEB;color:#D69E2E;"><i class="fas fa-exclamation"></i></div>
+    <div>
+      <div class="stat-value" style="{% if pending_mar %}color:#D69E2E;{% endif %}">{{ pending_mar|length }}</div>
+      <div class="stat-label">Pending Meds</div>
+    </div>
+  </div>
+
+  <div class="stat-card" style="cursor:default;">
+    <div class="stat-icon" style="background:#FAF5FF;color:#805AD5;"><i class="fas fa-sticky-note"></i></div>
+    <div>
+      <div class="stat-value">{{ flagged_notes|length }}</div>
+      <div class="stat-label">Flagged Notes</div>
+    </div>
+  </div>
+
+</div>
+
+{# ── MAIN CONTENT ───────────────────────────────────────────────────── #}
+<div class="row g-4">
+
+  {# Left: latest vitals at a glance #}
+  <div class="col-lg-7">
+    <div class="card-abi">
+      <div class="card-header-abi">
+        <i class="fas fa-heartbeat" style="color:var(--accent);"></i>
+        <h2>Latest Vitals</h2>
+        {% if todays_report %}
+        <a href="{% url 'nursing:shift_report_detail' todays_report.pk %}?mode=deep"
+           style="margin-left:auto;font-size:12px;color:var(--primary);font-weight:600;
+                  text-decoration:none;">Add vitals →</a>
+        {% endif %}
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#F7FAFC;border-bottom:1px solid var(--border);">
+              <th style="padding:10px 16px;text-align:left;font-weight:600;color:var(--text-muted);">Patient</th>
+              <th style="padding:10px 8px;text-align:center;">Temp</th>
+              <th style="padding:10px 8px;text-align:center;">BP</th>
+              <th style="padding:10px 8px;text-align:center;">Pulse</th>
+              <th style="padding:10px 8px;text-align:center;">SpO2</th>
+              <th style="padding:10px 8px;text-align:center;">Pain</th>
+              <th style="padding:10px 8px;text-align:center;">Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for v in recent_vitals %}
+            <tr style="border-bottom:1px solid var(--border);
+                       {% if v.is_critical %}background:#FFF5F5;{% endif %}">
+              <td style="padding:10px 16px;font-weight:600;">
+                <a href="{% url 'patient_detail:detail' v.patient.hospital_number %}"
+                   style="color:{% if v.is_critical %}#C53030{% else %}var(--dark){% endif %};text-decoration:none;">
+                  {{ v.patient.full_name }}
+                </a>
+              </td>
+              <td style="padding:8px;text-align:center;
+                         {% if v.temperature and v.temperature > 38 %}color:#E53E3E;font-weight:700;{% endif %}">
+                {{ v.temperature|default:"—" }}{% if v.temperature %}°{% endif %}
+              </td>
+              <td style="padding:8px;text-align:center;
+                         {% if v.blood_pressure_sys and v.blood_pressure_sys > 160 %}color:#E53E3E;font-weight:700;{% endif %}">
+                {{ v.blood_pressure|default:"—" }}
+              </td>
+              <td style="padding:8px;text-align:center;
+                         {% if v.pulse_rate and v.pulse_rate > 100 %}color:#E53E3E;font-weight:700;{% endif %}">
+                {{ v.pulse_rate|default:"—" }}
+              </td>
+              <td style="padding:8px;text-align:center;
+                         {% if v.oxygen_saturation and v.oxygen_saturation < 94 %}color:#E53E3E;font-weight:700;{% endif %}">
+                {{ v.oxygen_saturation|default:"—" }}{% if v.oxygen_saturation %}%{% endif %}
+              </td>
+              <td style="padding:8px;text-align:center;">
+                {% if v.pain_score %}
+                <span style="font-weight:700;
+                  {% if v.pain_score >= 7 %}color:#E53E3E;{% elif v.pain_score >= 4 %}color:#D69E2E;{% else %}color:var(--success);{% endif %}">
+                  {{ v.pain_score }}/10
+                </span>
+                {% else %}—{% endif %}
+              </td>
+              <td style="padding:8px;text-align:center;font-size:12px;color:var(--text-muted);">
+                {{ v.recorded_at|time:"H:i" }}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="7" style="padding:40px;text-align:center;color:var(--text-muted);">
+                No vitals recorded yet today.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {# Right: flags + pending meds #}
+  <div class="col-lg-5">
+
+    {% if pending_mar %}
+    <div class="card-abi mb-4" style="border-top:3px solid #D69E2E;">
+      <div class="card-header-abi">
+        <i class="fas fa-pills" style="color:#D69E2E;"></i>
+        <h2>Medications Needing Action</h2>
+      </div>
+      <div style="padding:0;">
+        {% for m in pending_mar %}
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 20px;
+                    border-bottom:1px solid var(--border);">
+          <div style="flex:1;">
+            <div style="font-weight:700;font-size:13px;">{{ m.patient.full_name }}</div>
+            <div style="font-size:12px;color:var(--text-muted);">
+              {{ m.medication_name }} {{ m.dosage }} · {{ m.scheduled_time|time:"H:i" }}
+            </div>
+          </div>
+          <span style="background:#FFF5F5;color:#C53030;border-radius:20px;
+                       padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap;">
+            {{ m.get_status_display }}
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if flagged_notes %}
+    <div class="card-abi">
+      <div class="card-header-abi">
+        <i class="fas fa-flag" style="color:#805AD5;"></i>
+        <h2>Notes for Doctor Review</h2>
+      </div>
+      <div style="padding:0;">
+        {% for note in flagged_notes %}
+        <div style="padding:12px 20px;border-bottom:1px solid var(--border);background:#FAF5FF;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="font-weight:700;font-size:13px;">{{ note.patient.full_name }}</span>
+            {% if note.was_voice %}
+            <span style="font-size:10px;color:#805AD5;">
+              <i class="fas fa-microphone"></i> Voice
+            </span>
+            {% endif %}
+            <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">
+              {{ note.created_at|time:"H:i" }}
+            </span>
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">
+            {{ note.content|truncatewords:18 }}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if not pending_mar and not flagged_notes %}
+    <div style="text-align:center;padding:48px 20px;color:var(--text-muted);">
+      <div style="font-size:40px;opacity:.2;margin-bottom:12px;">✓</div>
+      <div style="font-weight:700;font-size:15px;">All clear</div>
+      <div style="font-size:13px;margin-top:4px;">No flags or pending items right now.</div>
+    </div>
+    {% endif %}
+
+  </div>
+
+</div>
+
+<style>
+@keyframes blink {
+  0%,100% { opacity:1; }
+  50%      { opacity:.3; }
+}
+</style>
+{% endblock %}

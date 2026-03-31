@@ -1,0 +1,39 @@
+{% extends "base/base.html" %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left"><h1>Confirm &amp; Distribute Roster</h1>
+    <div class="breadcrumb-abi"><a href="{% url 'nursing:roster_detail' roster.pk %}">{{ roster.title }}</a> › Confirm</div>
+  </div>
+  <a href="{% url 'nursing:roster_detail' roster.pk %}" class="btn-abi-outline"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+<div class="row justify-content-center"><div class="col-lg-7">
+  <div class="card-abi">
+    <div class="card-header-abi" style="background:linear-gradient(135deg,#276749,#00856A);">
+      <i class="fas fa-paper-plane" style="color:#fff;"></i><h2 style="color:#fff;">Confirm and Send to All Nurses</h2>
+    </div>
+    <div class="card-body-abi">
+      <div style="background:#EBF4FF;border-left:4px solid var(--primary);border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#1A365D;">
+        <i class="fas fa-info-circle"></i>
+        Once confirmed, every nurse assigned in this roster will receive their personal schedule
+        via <strong>in-app notification</strong> and <strong>email</strong>.
+        If WhatsApp is configured, they will also receive a WhatsApp message.
+      </div>
+      <div style="font-size:14px;margin-bottom:16px;">
+        <strong>Roster:</strong> {{ roster.title }}<br/>
+        <strong>Period:</strong> {{ roster.start_date|date:"M d, Y" }} — {{ roster.end_date|date:"M d, Y" }}<br/>
+        <strong>Nurses assigned:</strong> {{ entries.count }} shift entries
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <div style="display:flex;gap:12px;justify-content:flex-end;">
+          <a href="{% url 'nursing:roster_detail' roster.pk %}" class="btn-abi-outline">Cancel</a>
+          <button type="submit" style="background:linear-gradient(135deg,#276749,#1C4532);color:#fff;border:none;
+                  border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;">
+            <i class="fas fa-check-circle"></i> Confirm &amp; Send to All Nurses
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div></div>
+{% endblock %}
