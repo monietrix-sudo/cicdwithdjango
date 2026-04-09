@@ -58,6 +58,24 @@
               </label>
             </div>
 
+            <div class="col-12">
+              <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:14px;
+                            padding:12px 14px;background:#EBF4FF;border-radius:10px;border:1px solid #BEE3F8;">
+                <input type="checkbox" name="is_downloadable"
+                       {% if record.is_downloadable %}checked{% endif %}
+                       style="width:16px;height:16px;margin-top:2px;accent-color:var(--primary);flex-shrink:0;" />
+                <div>
+                  <div style="font-weight:700;color:var(--primary);">
+                    <i class="fas fa-download"></i> Allow file download
+                  </div>
+                  <div style="font-size:12px;color:var(--text-muted);margin-top:3px;line-height:1.5;">
+                    If ticked, authorised staff can download the attached file.
+                    Admin and the uploading doctor can always download regardless of this setting.
+                  </div>
+                </div>
+              </label>
+            </div>
+
             <div class="col-12" style="background:#FFFBEB;border:1px solid #F6E05E;border-radius:10px;padding:14px 16px;">
               <label class="form-label" style="color:#744210;">
                 <i class="fas fa-comment-alt"></i> Change Note <span style="font-weight:400;">(describe what you changed)</span>

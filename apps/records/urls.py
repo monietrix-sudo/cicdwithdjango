@@ -14,4 +14,5 @@ urlpatterns = [
     path('share/<int:share_pk>/revoke/',        views.revoke_share_view,        name='revoke_share'),
     path('ocr-guide/', views.ocr_guide_view, name='ocr_guide'),
     path('<int:pk>/ocr/',                        views.ocr_extract_view,         name='ocr'),
+    path('<int:pk>/download/',                   views.download_record_file_view, name='download'),
 ]

@@ -7,9 +7,11 @@ Supports: upload, view, soft-delete, version history, record sharing.
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import HttpResponse
+from django.http import HttpResponse, StreamingHttpResponse, Http404
 from django.utils import timezone
 from datetime import timedelta
+import mimetypes
+import os
 
 from .models import MedicalRecord, RecordVersion, RecordShare
 from apps.patients.models import Patient
@@ -30,46 +32,93 @@ def _detect_file_type(filename):
 
 @login_required
 def upload_record_view(request, hospital_number):
-    patient = get_object_or_404(Patient, hospital_number=hospital_number)
-    appointments = Appointment.objects.filter(patient=patient).order_by('-appointment_date')[:10]
+    patient      = get_object_or_404(Patient, hospital_number=hospital_number)
+    appointments = Appointment.objects.filter(
+        patient=patient
+    ).order_by('-appointment_date')[:10]
 
     if request.method == 'POST':
         title       = request.POST.get('title', '').strip()
         record_type = request.POST.get('record_type', 'consultation')
         body        = request.POST.get('body', '').strip()
-        visible     = 'is_visible_to_patient' in request.POST
-        file        = request.FILES.get('attached_file')
+        visible      = 'is_visible_to_patient' in request.POST
+        downloadable = 'is_downloadable' in request.POST
         appt_id     = request.POST.get('appointment_id')
+        upload_mode = request.POST.get('upload_mode', 'text')  # text | image | pdf
 
         if not title:
-            messages.error(request, "Title is required.")
+            messages.error(request, "A title is required.")
             return redirect('records:upload', hospital_number=hospital_number)
 
+        # ── Validate file size and type ───────────────────────────────
+        file     = request.FILES.get('attached_file')
+        max_size = 50 * 1024 * 1024  # 50 MB
+
+        if file:
+            if file.size > max_size:
+                messages.error(request,
+                    f"File too large ({file.size // 1024 // 1024} MB). Maximum is 50 MB.")
+                return redirect('records:upload', hospital_number=hospital_number)
+
+            fname = file.name.lower()
+            if upload_mode == 'pdf' and not fname.endswith('.pdf'):
+                messages.error(request,
+                    "PDF mode selected but the uploaded file is not a PDF.")
+                return redirect('records:upload', hospital_number=hospital_number)
+
+            if upload_mode == 'image' and not any(
+                fname.endswith(e) for e in ['.jpg','.jpeg','.png','.gif','.webp']
+            ):
+                messages.error(request,
+                    "Image mode selected but the file is not a recognised image format.")
+                return redirect('records:upload', hospital_number=hospital_number)
+
+        # ── Create the record ─────────────────────────────────────────
         record = MedicalRecord(
             patient=patient,
             record_type=record_type,
             title=title,
             body=body,
             is_visible_to_patient=visible,
+            is_downloadable=downloadable,
             uploaded_by=request.user,
         )
         if file:
-            max_size = 50 * 1024 * 1024
-            if file.size > max_size:
-                messages.error(request, "File too large. Maximum 50MB.")
-                return redirect('records:upload', hospital_number=hospital_number)
             record.attached_file = file
         if appt_id:
-            record.appointment_id = appt_id
+            try:
+                record.appointment_id = int(appt_id)
+            except (ValueError, TypeError):
+                pass
 
         record.save()
+
+        # ── Auto-run OCR on PDF if requested ─────────────────────────
+        auto_ocr = request.POST.get('auto_ocr') == '1'
+        if auto_ocr and file and record.file_type in ('pdf', 'image'):
+            try:
+                extracted = _run_ocr(record)
+                if extracted.strip():
+                    record.body = (body + '\n\n' + extracted.strip()).strip()
+                    record.save()
+                    messages.info(request,
+                        f"Text extracted from file automatically "
+                        f"({len(extracted)} characters). Review below.")
+            except ImportError:
+                messages.warning(request,
+                    "OCR is not installed on this server — text was not extracted. "
+                    "Ask your administrator to install pytesseract.")
+            except Exception as e:
+                messages.warning(request, f"OCR failed: {e}")
+
         log_action(request.user, 'CREATE', request,
-                   f"Uploaded record '{title}' for {hospital_number}")
-        messages.success(request, f"Record '{title}' uploaded successfully.")
-        return redirect('patient_detail:detail', hospital_number=hospital_number)
+                   f"Uploaded {upload_mode} record '{title}' for {hospital_number}")
+        messages.success(request,
+            f"'{title}' saved successfully.")
+        return redirect('records:detail', pk=record.pk)
 
     return render(request, 'records/upload_record.html', {
-        'page_title':   'Upload Record',
+        'page_title':   'Upload Medical Record',
         'patient':      patient,
         'appointments': appointments,
         'record_types': MedicalRecord.RECORD_TYPE_CHOICES,
@@ -91,11 +140,31 @@ def record_detail_view(request, pk):
     versions = RecordVersion.objects.filter(record=record)
     log_action(request.user, 'VIEW', request, f"Viewed record #{pk}: {record.title}")
 
+    # ── Download permission ───────────────────────────────────────────
+    # Mirrors the logic in download_record_file_view so the button only
+    # appears when the download would actually succeed.
+    user = request.user
+    can_download = False
+    if record.attached_file:
+        if user.is_superuser or user.is_admin_staff:
+            can_download = True
+        elif user.role == 'doctor' and record.uploaded_by == user:
+            can_download = True
+        elif user.is_patient_user:
+            if (hasattr(user, 'patient_profile')
+                    and user.patient_profile == record.patient
+                    and record.is_visible_to_patient
+                    and record.is_downloadable):
+                can_download = True
+        elif record.is_downloadable:
+            can_download = True
+
     return render(request, 'records/record_detail.html', {
-        'page_title': record.title,
-        'record':     record,
-        'shares':     shares,
-        'versions':   versions,
+        'page_title':   record.title,
+        'record':       record,
+        'shares':       shares,
+        'versions':     versions,
+        'can_download': can_download,
     })
 
 
@@ -129,6 +198,7 @@ def edit_record_view(request, pk):
         record.body        = request.POST.get('body', record.body).strip()
         record.record_type = request.POST.get('record_type', record.record_type)
         record.is_visible_to_patient = 'is_visible_to_patient' in request.POST
+        record.is_downloadable       = 'is_downloadable' in request.POST
         record.version_number += 1
 
         if 'attached_file' in request.FILES:
@@ -439,3 +509,126 @@ def ocr_guide_view(request):
         'page_title':       'OCR Scanning Setup Guide',
         'file_type_status': file_type_status,
     })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FILE DOWNLOAD VIEW — permission-controlled
+# ─────────────────────────────────────────────────────────────────────────────
+
+@login_required
+def download_record_file_view(request, pk):
+    """
+    Download the attached file from a medical record.
+
+    Permission rules:
+      - Admin and superuser: always allowed
+      - Doctor who uploaded the record: always allowed
+      - Other staff (nurses, receptionists, lab techs): allowed only if is_downloadable=True
+      - Patient: allowed only if record is_visible_to_patient=True AND is_downloadable=True
+
+    The file is served as an attachment (forces browser download dialog).
+    For object storage backends (S3/R2/Azure), the user is redirected to a
+    time-limited signed URL — no file bytes pass through Django.
+    For local storage, Django streams the file directly.
+    """
+    record = get_object_or_404(MedicalRecord, pk=pk, is_deleted=False)
+
+    # ── Permission check ──────────────────────────────────────────────
+    user = request.user
+
+    # No file attached at all
+    if not record.attached_file:
+        messages.error(request, "This record has no attached file.")
+        return redirect('records:detail', pk=pk)
+
+    # Determine if this user may download
+    can_download = False
+
+    if user.is_superuser or user.is_admin_staff:
+        can_download = True
+
+    elif user.role == 'doctor' and record.uploaded_by == user:
+        can_download = True   # uploader always can download their own
+
+    elif user.is_patient_user:
+        # Patient: needs both flags
+        if (hasattr(user, 'patient_profile')
+                and user.patient_profile == record.patient
+                and record.is_visible_to_patient
+                and record.is_downloadable):
+            can_download = True
+
+    elif record.is_downloadable:
+        # Any other logged-in staff: needs is_downloadable flag
+        can_download = True
+
+    if not can_download:
+        messages.error(
+            request,
+            "You do not have permission to download this file. "
+            "Contact the doctor or administrator to enable downloads for this record."
+        )
+        return redirect('records:detail', pk=pk)
+
+    # ── Serve the file ────────────────────────────────────────────────
+    log_action(user, 'DOWNLOAD', request,
+               f"Downloaded file from record #{pk} — {record.title}")
+
+    storage = record.attached_file.storage
+
+    # Object storage (S3/R2/Azure): generate a signed URL and redirect.
+    # The file bytes go directly from the bucket to the user's browser —
+    # they never pass through Django, so no memory pressure.
+    if hasattr(storage, 'url') and not _is_local_storage(storage):
+        try:
+            signed_url = record.attached_file.url
+            from django.http import HttpResponseRedirect
+            return HttpResponseRedirect(signed_url)
+        except Exception as e:
+            messages.error(request, f"Could not generate download link: {e}")
+            return redirect('records:detail', pk=pk)
+
+    # Local storage: stream the file through Django
+    try:
+        file_path = record.attached_file.path
+    except NotImplementedError:
+        # Some backends don't support .path — redirect to URL instead
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect(record.attached_file.url)
+
+    if not os.path.exists(file_path):
+        messages.error(request,
+            "The file could not be found on the server. "
+            "It may have been moved or deleted.")
+        return redirect('records:detail', pk=pk)
+
+    # Detect content type
+    content_type, _encoding = mimetypes.guess_type(file_path)
+    content_type = content_type or 'application/octet-stream'
+
+    # Stream the file in chunks — safe for large PDFs
+    filename = os.path.basename(file_path)
+    file_size = os.path.getsize(file_path)
+
+    def file_iterator(path, chunk_size=65536):
+        with open(path, 'rb') as f:
+            while True:
+                chunk = f.read(chunk_size)
+                if not chunk:
+                    break
+                yield chunk
+
+    response = StreamingHttpResponse(
+        file_iterator(file_path),
+        content_type=content_type,
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response['Content-Length']      = file_size
+    response['X-Content-Type-Options'] = 'nosniff'   # security header
+    return response
+
+
+def _is_local_storage(storage):
+    """True if the storage backend is local disk (not S3/Azure/etc.)."""
+    from django.core.files.storage import FileSystemStorage
+    return isinstance(storage, FileSystemStorage)

@@ -186,13 +186,104 @@ USE_TZ        = True
 
 
 # ── Static & Media Files ──────────────────────────────────────────────
-STATIC_URL          = '/static/'
-STATICFILES_DIRS    = [BASE_DIR / 'static']
-STATIC_ROOT         = BASE_DIR / 'staticfiles'
+# Static files (CSS, JS, admin) — served by WhiteNoise in production
+STATIC_URL       = '/static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT      = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+# ── Object Storage Configuration ─────────────────────────────────────
+# Controls WHERE uploaded files (PDFs, images, patient photos) are stored.
+# Set STORAGE_BACKEND in .env to switch backends with zero code changes.
+#
+# STORAGE_BACKEND=local      → disk on this server (dev/testing only)
+# STORAGE_BACKEND=railway    → Railway S3-compatible bucket   ← use this on Railway
+# STORAGE_BACKEND=s3         → Amazon S3
+# STORAGE_BACKEND=r2         → Cloudflare R2 (S3-compatible, cheaper)
+# STORAGE_BACKEND=b2         → Backblaze B2 (S3-compatible, cheapest)
+# STORAGE_BACKEND=azure      → Azure Blob Storage
+
+STORAGE_BACKEND = env('STORAGE_BACKEND', 'local').lower()
+
+# ── Local storage (default — dev only) ───────────────────────────────
 MEDIA_URL  = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# ── S3-compatible (Railway / AWS S3 / Cloudflare R2 / Backblaze B2) ──
+# Railway:     get these from Railway dashboard → your project → Storage tab → Connect
+# AWS S3:      leave AWS_S3_ENDPOINT_URL empty
+# Cloudflare R2: endpoint = https://<account_id>.r2.cloudflarestorage.com
+# Backblaze B2:  endpoint = https://s3.<region>.backblazeb2.com
+
+AWS_ACCESS_KEY_ID        = env('AWS_ACCESS_KEY_ID', '')
+AWS_SECRET_ACCESS_KEY    = env('AWS_SECRET_ACCESS_KEY', '')
+AWS_STORAGE_BUCKET_NAME  = env('AWS_STORAGE_BUCKET_NAME', '')
+AWS_S3_REGION_NAME       = env('AWS_S3_REGION_NAME', 'us-east-1')
+AWS_S3_ENDPOINT_URL      = env('AWS_S3_ENDPOINT_URL', '')    # blank = real AWS; set for Railway/R2/B2
+
+# How long signed download URLs stay valid (seconds). Default = 1 hour.
+# Files are private — Django generates a fresh signed URL each time a file is accessed.
+AWS_QUERYSTRING_EXPIRE   = env_int('AWS_QUERYSTRING_EXPIRE', 3600)
+
+# Prevent django-storages from adding query-string parameters to static URLs
+AWS_S3_FILE_OVERWRITE    = False      # don't silently overwrite existing files
+AWS_DEFAULT_ACL          = 'private' # all uploaded files are private by default
+
+# Extra headers for better browser behaviour
+AWS_S3_OBJECT_PARAMETERS = {
+    'CacheControl': 'max-age=86400',           # browser caches files for 1 day
+}
+
+# ── Azure Blob Storage ────────────────────────────────────────────────
+# Get these from Azure Portal → Storage Account → Access Keys
+# Tiers: "Hot" = fast/expensive, "Cool" = slower/cheaper, "Archive" = offline/cheapest
+AZURE_ACCOUNT_NAME      = env('AZURE_ACCOUNT_NAME', '')
+AZURE_ACCOUNT_KEY       = env('AZURE_ACCOUNT_KEY', '')
+AZURE_MEDIA_CONTAINER   = env('AZURE_MEDIA_CONTAINER', 'abicare-media')
+AZURE_COOL_CONTAINER    = env('AZURE_COOL_CONTAINER', 'abicare-cool')
+AZURE_ARCHIVE_CONTAINER = env('AZURE_ARCHIVE_CONTAINER', 'abicare-archive')
+
+# ── Django storages routing ───────────────────────────────────────────
+# Switch DEFAULT_FILE_STORAGE based on STORAGE_BACKEND env var.
+# The database always stores only the file path — never the file bytes.
+# Changing storage backend does not change the database schema at all.
+
+if STORAGE_BACKEND == 'local':
+    # Files on disk — MEDIA_ROOT set above
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+
+elif STORAGE_BACKEND in ('railway', 's3', 'r2', 'b2'):
+    # S3-compatible — MediaStorage handles missing creds by falling back to local
+    DEFAULT_FILE_STORAGE = 'abicare.storage_backends.MediaStorage'
+    # Update MEDIA_URL to point at the bucket (only if bucket name is set)
+    _bucket = env('AWS_STORAGE_BUCKET_NAME', '')
+    _endpoint = env('AWS_S3_ENDPOINT_URL', '')
+    if _bucket:
+        if _endpoint:
+            MEDIA_URL = f'{_endpoint.rstrip("/")}/{_bucket}/media/'
+        else:
+            _region = env('AWS_S3_REGION_NAME', 'us-east-1')
+            MEDIA_URL = f'https://{_bucket}.s3.{_region}.amazonaws.com/media/'
+    # If bucket name is not set yet, keep MEDIA_URL as /media/ — local fallback active
+
+elif STORAGE_BACKEND == 'azure':
+    # Azure Blob — AzureMediaStorage handles missing creds by falling back to local
+    DEFAULT_FILE_STORAGE = 'abicare.storage_backends.AzureMediaStorage'
+    _az_account   = env('AZURE_ACCOUNT_NAME', '')
+    _az_container = env('AZURE_MEDIA_CONTAINER', 'abicare-media')
+    if _az_account:
+        MEDIA_URL = (
+            f'https://{_az_account}.blob.core.windows.net/{_az_container}/media/'
+        )
+
+else:
+    # Unknown value — log at startup and stay on local disk
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    import logging as _log
+    _log.getLogger('abicare.storage').warning(
+        "Unknown STORAGE_BACKEND='%s'. Valid: local, r2, s3, b2, railway, azure. "
+        "Using local disk.", STORAGE_BACKEND
+    )
 
 
 # ── File Upload Limits ────────────────────────────────────────────────
@@ -330,6 +421,41 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ── Paystack (Nigeria payments) ────────────────────────────────────────
 PAYSTACK_SECRET_KEY = env('PAYSTACK_SECRET_KEY', '')
 PAYSTACK_PUBLIC_KEY = env('PAYSTACK_PUBLIC_KEY', '')
+
+
+# ── Logging ───────────────────────────────────────────────────────────────
+# Routes the abicare.storage logger to the console so storage warnings
+# (e.g. "using local disk fallback") appear in Railway logs.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'abicare': {
+            'format': '[{levelname}] {name}: {message}',
+            'style':  '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class':     'logging.StreamHandler',
+            'formatter': 'abicare',
+        },
+    },
+    'loggers': {
+        # AbiCare storage — shows fallback warnings when cloud is not configured
+        'abicare.storage': {
+            'handlers': ['console'],
+            'level':    'WARNING',
+            'propagate': False,
+        },
+        # Django errors always go to console
+        'django': {
+            'handlers': ['console'],
+            'level':    env('DJANGO_LOG_LEVEL', 'WARNING'),
+            'propagate': False,
+        },
+    },
+}
 
 CSRF_TRUSTED_ORIGINS = [
     "https://abicarehospital-production.up.railway.app",

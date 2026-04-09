@@ -1,85 +1,545 @@
 {% extends "base/base.html" %}
 {% block content %}
+
 <div class="page-header">
   <div class="page-header-left">
     <h1>Upload Medical Record</h1>
     <div class="breadcrumb-abi">
-      <a href="{% url 'patients:dashboard' %}">Dashboard</a> ›
-      <a href="{% url 'patient_detail:detail' patient.hospital_number %}">{{ patient.full_name }}</a> › Upload Record
+      <a href="{% url 'patient_detail:detail' patient.hospital_number %}">{{ patient.full_name }}</a>
+      › Upload Record
     </div>
   </div>
+  <a href="{% url 'patient_detail:detail' patient.hospital_number %}" class="btn-abi-outline">
+    <i class="fas fa-arrow-left"></i> Cancel
+  </a>
 </div>
-<div class="row g-4 justify-content-center">
-  <div class="col-lg-8">
-    <!-- Patient strip -->
-    <div class="card-abi mb-4" style="border-left:4px solid var(--primary);">
-      <div class="card-body-abi">
-        <div style="display:flex;align-items:center;gap:16px;">
-          {% if patient.photo %}<img src="{{ patient.photo.url }}" class="patient-avatar" style="width:48px;height:48px;" />
-          {% else %}<div class="patient-avatar-placeholder" style="width:48px;height:48px;font-size:16px;font-weight:700;">{{ patient.first_name|first }}{{ patient.last_name|first }}</div>{% endif %}
-          <div>
-            <div style="font-size:18px;font-weight:700;">{{ patient.full_name }}</div>
-            <div style="font-size:13px;color:var(--text-muted);">{{ patient.hospital_number }}</div>
+
+<!-- Patient banner -->
+<div style="background:#F7FAFC;border:1px solid var(--border);border-left:4px solid var(--primary);
+            border-radius:10px;padding:14px 20px;margin-bottom:24px;
+            display:flex;align-items:center;gap:14px;">
+  {% if patient.photo %}
+  <img src="{{ patient.photo.url }}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;" />
+  {% else %}
+  <div style="width:44px;height:44px;border-radius:50%;background:var(--primary);color:#fff;
+              display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0;">
+    {{ patient.first_name|first|upper }}{{ patient.last_name|first|upper }}
+  </div>
+  {% endif %}
+  <div>
+    <div style="font-weight:700;font-size:16px;">{{ patient.full_name }}</div>
+    <div style="font-size:13px;color:var(--text-muted);">{{ patient.hospital_number }}{% if patient.age %} · {{ patient.age }} yrs{% endif %}</div>
+  </div>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="form-abi" id="uploadForm">
+{% csrf_token %}
+<input type="hidden" name="upload_mode" id="upload_mode" value="text" />
+
+<div class="row g-4">
+<div class="col-lg-8">
+
+  <!-- STEP 1: Mode selection -->
+  <div class="card-abi mb-4">
+    <div class="card-header-abi">
+      <i class="fas fa-layer-group" style="color:var(--primary);"></i>
+      <h2>Step 1 — What are you uploading?</h2>
+    </div>
+    <div class="card-body-abi">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+
+        <div id="mode-text" onclick="setMode('text')"
+             style="border:2px solid var(--primary);background:#EBF4FF;border-radius:14px;
+                    padding:20px 16px;text-align:center;cursor:pointer;transition:all .2s;user-select:none;">
+          <div style="font-size:32px;margin-bottom:8px;">📝</div>
+          <div style="font-weight:700;font-size:14px;color:var(--primary);">Text / Note</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.5;">
+            Type directly — consultation note, diagnosis, discharge summary
           </div>
+        </div>
+
+        <div id="mode-image" onclick="setMode('image')"
+             style="border:2px solid var(--border);background:#fff;border-radius:14px;
+                    padding:20px 16px;text-align:center;cursor:pointer;transition:all .2s;user-select:none;">
+          <div style="font-size:32px;margin-bottom:8px;">🖼️</div>
+          <div style="font-weight:700;font-size:14px;color:var(--dark);">Image / Photo</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.5;">
+            JPG, PNG, GIF, WEBP — scan photo, X-ray, lab sheet
+          </div>
+        </div>
+
+        <div id="mode-pdf" onclick="setMode('pdf')"
+             style="border:2px solid var(--border);background:#fff;border-radius:14px;
+                    padding:20px 16px;text-align:center;cursor:pointer;transition:all .2s;user-select:none;">
+          <div style="font-size:32px;margin-bottom:8px;">📄</div>
+          <div style="font-weight:700;font-size:14px;color:var(--dark);">PDF Document</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.5;">
+            Referral letter, lab report, discharge form as PDF
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Details -->
+  <div class="card-abi mb-4">
+    <div class="card-header-abi">
+      <i class="fas fa-tag" style="color:var(--primary);"></i>
+      <h2>Step 2 — Record Details</h2>
+    </div>
+    <div class="card-body-abi">
+      <div class="row g-3">
+        <div class="col-md-7">
+          <label class="form-label">Title <span style="color:#E53E3E;">*</span></label>
+          <input type="text" name="title" class="form-control" required
+                 placeholder="e.g. Chest X-Ray Report, Referral to LASUTH, Consultation Note…" />
+        </div>
+        <div class="col-md-5">
+          <label class="form-label">Record Type <span style="color:#E53E3E;">*</span></label>
+          <select name="record_type" class="form-select" required>
+            {% for val, label in record_types %}
+            <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% if appointments %}
+        <div class="col-12">
+          <label class="form-label">Link to Appointment <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+          <select name="appointment_id" class="form-select">
+            <option value="">— Not linked to an appointment —</option>
+            {% for appt in appointments %}
+            <option value="{{ appt.pk }}">{{ appt.appointment_date|date:"M d, Y" }} — {{ appt.get_appointment_type_display }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Text panel -->
+  <div id="panel-text" class="card-abi mb-4">
+    <div class="card-header-abi">
+      <i class="fas fa-keyboard" style="color:var(--primary);"></i>
+      <h2>Step 3 — Type Your Note</h2>
+    </div>
+    <div class="card-body-abi">
+      <textarea name="body" id="body_text" class="form-control" rows="10"
+                placeholder="Type the full consultation note, diagnosis, summary, or any clinical text here…&#10;&#10;You can also attach an image or PDF alongside this text by switching to Image or PDF mode."></textarea>
+    </div>
+  </div>
+
+  <!-- STEP 3: Image panel -->
+  <div id="panel-image" class="card-abi mb-4" style="display:none;">
+    <div class="card-header-abi">
+      <i class="fas fa-image" style="color:#805AD5;"></i>
+      <h2>Step 3 — Upload Image</h2>
+    </div>
+    <div class="card-body-abi">
+
+      <div id="img-drop-zone"
+           style="border:2.5px dashed #C4B5FD;background:#FAF5FF;border-radius:14px;
+                  padding:48px 20px;text-align:center;cursor:pointer;transition:all .2s;"
+           ondragover="event.preventDefault();this.style.borderColor='#805AD5';this.style.background='#F3E8FF';"
+           ondragleave="this.style.borderColor='#C4B5FD';this.style.background='#FAF5FF';"
+           ondrop="handleDrop(event,'image')"
+           onclick="document.getElementById('img-file-input').click()">
+        <i class="fas fa-cloud-upload-alt" style="font-size:40px;color:#C4B5FD;margin-bottom:12px;display:block;"></i>
+        <div style="font-weight:700;font-size:15px;color:#805AD5;">Drag &amp; drop your image here</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:6px;">or click to browse</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">JPG · PNG · GIF · WEBP &nbsp;·&nbsp; Max 50 MB</div>
+      </div>
+
+      <input type="file" id="img-file-input" accept=".jpg,.jpeg,.png,.gif,.webp"
+             style="display:none;" onchange="previewImage(this)" />
+
+      <div id="img-preview-wrap" style="display:none;margin-top:16px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <span style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Preview</span>
+          <button type="button" onclick="clearFile('image')"
+                  style="margin-left:auto;background:none;border:none;color:#E53E3E;cursor:pointer;font-size:13px;font-weight:600;">
+            <i class="fas fa-times"></i> Remove
+          </button>
+        </div>
+        <img id="img-preview"
+             style="max-width:100%;max-height:450px;border-radius:10px;
+                    border:1px solid var(--border);display:block;" />
+        <div id="img-preview-info"
+             style="margin-top:8px;font-size:12px;color:var(--text-muted);"></div>
+      </div>
+
+      <!-- Note alongside image -->
+      <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
+        <label class="form-label">Add a note <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+        <textarea name="body" id="body_image" class="form-control" rows="3"
+                  placeholder="e.g. X-Ray taken on admission — consolidation in right lower lobe…"></textarea>
+      </div>
+
+      <!-- OCR option -->
+      <div style="margin-top:12px;background:#F0FFF4;border-radius:10px;padding:14px 16px;">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;">
+          <input type="checkbox" name="auto_ocr" value="1"
+                 style="width:16px;height:16px;margin-top:2px;accent-color:var(--success);flex-shrink:0;" />
+          <div>
+            <strong style="color:var(--success);">Auto-extract text with OCR</strong>
+            <div style="color:var(--text-muted);margin-top:3px;font-size:12px;line-height:1.5;">
+              AbiCare reads the text from this image automatically using Tesseract OCR.
+              Best for clearly printed or typed documents.
+              <a href="{% url 'records:ocr_guide' %}" style="color:var(--primary);font-weight:600;">Setup guide →</a>
+            </div>
+          </div>
+        </label>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- STEP 3: PDF panel -->
+  <div id="panel-pdf" class="card-abi mb-4" style="display:none;">
+    <div class="card-header-abi">
+      <i class="fas fa-file-pdf" style="color:#E53E3E;"></i>
+      <h2>Step 3 — Upload PDF</h2>
+    </div>
+    <div class="card-body-abi">
+
+      <div id="pdf-drop-zone"
+           style="border:2.5px dashed #FEB2B2;background:#FFF5F5;border-radius:14px;
+                  padding:48px 20px;text-align:center;cursor:pointer;transition:all .2s;"
+           ondragover="event.preventDefault();this.style.borderColor='#E53E3E';this.style.background='#FED7D7';"
+           ondragleave="this.style.borderColor='#FEB2B2';this.style.background='#FFF5F5';"
+           ondrop="handleDrop(event,'pdf')"
+           onclick="document.getElementById('pdf-file-input').click()">
+        <i class="fas fa-file-pdf" style="font-size:40px;color:#FEB2B2;margin-bottom:12px;display:block;"></i>
+        <div style="font-weight:700;font-size:15px;color:#C53030;">Drag &amp; drop your PDF here</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:6px;">or click to browse</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">PDF only &nbsp;·&nbsp; Max 50 MB</div>
+      </div>
+
+      <input type="file" id="pdf-file-input" accept=".pdf"
+             style="display:none;" onchange="previewPDF(this)" />
+
+      <div id="pdf-preview-wrap" style="display:none;margin-top:16px;">
+        <!-- File info bar -->
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;
+                    background:#FFF5F5;border:1px solid #FEB2B2;border-radius:10px;margin-bottom:12px;">
+          <i class="fas fa-file-pdf" style="font-size:24px;color:#E53E3E;flex-shrink:0;"></i>
+          <div style="flex:1;">
+            <div id="pdf-file-name" style="font-weight:700;font-size:14px;word-break:break-all;"></div>
+            <div id="pdf-file-size" style="font-size:12px;color:var(--text-muted);margin-top:2px;"></div>
+          </div>
+          <button type="button" onclick="clearFile('pdf')"
+                  style="background:none;border:none;color:#E53E3E;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap;">
+            <i class="fas fa-times"></i> Remove
+          </button>
+        </div>
+
+        <!-- Inline PDF preview -->
+        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+          <div style="background:#F7FAFC;padding:9px 14px;font-size:12px;font-weight:600;
+                      color:var(--text-muted);border-bottom:1px solid var(--border);
+                      display:flex;align-items:center;gap:8px;">
+            <i class="fas fa-eye"></i> Live Preview
+            <span style="margin-left:auto;font-weight:400;font-size:11px;">
+              Scroll inside the preview to read all pages
+            </span>
+          </div>
+          <iframe id="pdf-preview-frame"
+                  style="width:100%;height:550px;border:none;"
+                  title="PDF Preview"></iframe>
+        </div>
+      </div>
+
+      <!-- Note alongside PDF -->
+      <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
+        <label class="form-label">Add a note <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+        <textarea name="body" id="body_pdf" class="form-control" rows="3"
+                  placeholder="e.g. Referral from Dr. Okafor at UCH Ibadan — patient needs surgical review…"></textarea>
+      </div>
+
+      <!-- OCR option -->
+      <div style="margin-top:12px;background:#F0FFF4;border-radius:10px;padding:14px 16px;">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;">
+          <input type="checkbox" name="auto_ocr" value="1"
+                 style="width:16px;height:16px;margin-top:2px;accent-color:var(--success);flex-shrink:0;" />
+          <div>
+            <strong style="color:var(--success);">Auto-extract text with OCR</strong>
+            <div style="color:var(--text-muted);margin-top:3px;font-size:12px;line-height:1.5;">
+              Reads text from every page of the PDF automatically using Tesseract.
+              Works best on clearly printed documents. Scanned or handwritten PDFs may vary.
+              <a href="{% url 'records:ocr_guide' %}" style="color:var(--primary);font-weight:600;">Setup guide →</a>
+            </div>
+          </div>
+        </label>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- STEP 4: Visibility + Submit -->
+  <div class="card-abi">
+    <div class="card-header-abi">
+      <i class="fas fa-shield-alt" style="color:var(--accent);"></i>
+      <h2>Step 4 — Visibility &amp; Permissions</h2>
+    </div>
+    <div class="card-body-abi">
+
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;
+                    font-size:14px;margin-bottom:16px;">
+        <input type="checkbox" name="is_visible_to_patient"
+               style="width:18px;height:18px;margin-top:1px;accent-color:var(--accent);flex-shrink:0;" />
+        <div>
+          <div style="font-weight:600;">Make visible to patient in their portal</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+            The patient can read this record when they log into the patient portal. Off by default.
+          </div>
+        </div>
+      </label>
+
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;
+                    font-size:14px;margin-bottom:20px;padding:12px 14px;
+                    background:#EBF4FF;border-radius:10px;border:1px solid #BEE3F8;">
+        <input type="checkbox" name="is_downloadable"
+               style="width:18px;height:18px;margin-top:1px;accent-color:var(--primary);flex-shrink:0;" />
+        <div>
+          <div style="font-weight:700;color:var(--primary);">
+            <i class="fas fa-download"></i> Allow file download
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:3px;line-height:1.5;">
+            If ticked, authorised staff can download the attached PDF or image.
+            Admin and the uploading doctor can always download regardless of this setting.
+            If unticked, the file can be viewed in the browser but the download button is hidden.
+          </div>
+        </div>
+      </label>
+
+      <div style="display:flex;gap:12px;justify-content:flex-end;">
+        <a href="{% url 'patient_detail:detail' patient.hospital_number %}" class="btn-abi-outline">Cancel</a>
+        <button type="submit" class="btn-abi-primary" style="padding:11px 28px;font-size:15px;">
+          <i class="fas fa-save"></i> Save Record
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end col-lg-8 -->
+
+<!-- Right sidebar -->
+<div class="col-lg-4">
+  <div class="card-abi mb-4" style="position:sticky;top:70px;">
+    <div class="card-header-abi">
+      <i class="fas fa-info-circle" style="color:var(--primary);"></i>
+      <h2>Accepted Formats</h2>
+    </div>
+    <div style="padding:0;">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="font-size:20px;">📝</span>
+          <span style="font-weight:700;font-size:13px;">Text Note</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);padding-left:30px;line-height:1.6;">
+          No file needed. Searchable immediately. Best for notes written at the time of consultation.
+        </div>
+      </div>
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="font-size:20px;">🖼️</span>
+          <span style="font-weight:700;font-size:13px;">Images</span>
+          <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">max 50 MB</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);padding-left:30px;line-height:1.6;">
+          JPG · JPEG · PNG · GIF · WEBP<br/>
+          Photo of X-ray film, handwritten note, scan print-out, lab slip
+        </div>
+      </div>
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="font-size:20px;">📄</span>
+          <span style="font-weight:700;font-size:13px;">PDF Document</span>
+          <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">max 50 MB</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);padding-left:30px;line-height:1.6;">
+          PDF only<br/>
+          Referral letters, discharge summaries, typed lab reports, NHIS forms, insurance documents
+        </div>
+      </div>
+      <div style="padding:14px 18px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="font-size:20px;">🔍</span>
+          <span style="font-weight:700;font-size:13px;">OCR Text Extraction</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);padding-left:30px;line-height:1.6;">
+          Auto-reads text from images and PDFs. Tick <em>"Auto-extract text"</em> on the image or PDF panel.
+          <a href="{% url 'records:ocr_guide' %}" style="color:var(--primary);font-weight:600;display:block;margin-top:4px;">
+            <i class="fas fa-book"></i> OCR setup guide →
+          </a>
         </div>
       </div>
     </div>
-
-    <div class="card-abi">
-      <div class="card-header-abi"><i class="fas fa-upload" style="color:var(--primary);"></i><h2>New Record</h2></div>
-      <div class="card-body-abi">
-        <form method="post" enctype="multipart/form-data" class="form-abi">
-          {% csrf_token %}
-          <div class="row g-3">
-            <div class="col-md-8">
-              <label class="form-label">Record Title *</label>
-              <input type="text" name="title" class="form-control" required placeholder="e.g. Chest X-Ray Report, Consultation Note…" />
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Record Type *</label>
-              <select name="record_type" class="form-select" required>
-                {% for val, label in record_types %}
-                <option value="{{ val }}">{{ label }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="col-12">
-              <label class="form-label">Text Content / Notes</label>
-              <textarea name="body" class="form-control" rows="5" placeholder="Type consultation notes, diagnosis, or summary here…"></textarea>
-            </div>
-            <div class="col-12">
-              <label class="form-label">Attach File (optional)</label>
-              <input type="file" name="attached_file" class="form-control"
-                     accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.mp4,.webm" />
-              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
-                Accepted: Images (JPG/PNG/GIF/WEBP), PDF, Word (.doc/.docx), Video (MP4/WEBM). Max 50MB.
-              </div>
-            </div>
-            {% if appointments %}
-            <div class="col-12">
-              <label class="form-label">Link to Appointment (optional)</label>
-              <select name="appointment_id" class="form-select">
-                <option value="">— Not linked to appointment —</option>
-                {% for appt in appointments %}
-                <option value="{{ appt.pk }}">{{ appt.appointment_date|date:"M d, Y" }} — {{ appt.get_appointment_type_display }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            {% endif %}
-            <div class="col-12">
-              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;font-weight:500;">
-                <input type="checkbox" name="is_visible_to_patient" style="width:16px;height:16px;" />
-                Make this record visible to the patient in their portal
-              </label>
-            </div>
-            <div class="col-12" style="display:flex;gap:12px;justify-content:flex-end;">
-              <a href="{% url 'patient_detail:detail' patient.hospital_number %}" class="btn-abi-outline">Cancel</a>
-              <button type="submit" class="btn-abi-primary"><i class="fas fa-upload"></i> Upload Record</button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
   </div>
 </div>
+
+</div><!-- end row -->
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentMode = 'text';
+let activeFileInput = null;   // whichever file input is currently selected
+
+// ── Mode switching ────────────────────────────────────────────
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('upload_mode').value = mode;
+
+  // Update card borders
+  ['text','image','pdf'].forEach(m => {
+    const card = document.getElementById('mode-' + m);
+    const isActive = m === mode;
+    card.style.border     = isActive ? '2px solid var(--primary)' : '2px solid var(--border)';
+    card.style.background = isActive ? '#EBF4FF' : '#fff';
+    card.querySelector('div:nth-child(2)').style.color = isActive ? 'var(--primary)' : 'var(--dark)';
+  });
+
+  // Show correct panel
+  document.getElementById('panel-text').style.display  = mode === 'text'  ? 'block' : 'none';
+  document.getElementById('panel-image').style.display = mode === 'image' ? 'block' : 'none';
+  document.getElementById('panel-pdf').style.display   = mode === 'pdf'   ? 'block' : 'none';
+}
+
+// ── Drag-and-drop ─────────────────────────────────────────────
+function handleDrop(event, type) {
+  event.preventDefault();
+  // Reset drop zone style
+  const zone = document.getElementById(type + '-drop-zone');
+  zone.style.borderColor = type === 'pdf' ? '#FEB2B2' : '#C4B5FD';
+  zone.style.background  = type === 'pdf' ? '#FFF5F5' : '#FAF5FF';
+
+  const file = event.dataTransfer.files[0];
+  if (!file) return;
+
+  const inp = document.getElementById(type + '-file-input');
+  const dt  = new DataTransfer();
+  dt.items.add(file);
+  inp.files = dt.files;
+
+  type === 'image' ? previewImage(inp) : previewPDF(inp);
+}
+
+// ── Image preview ─────────────────────────────────────────────
+function previewImage(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  if (!['image/jpeg','image/png','image/gif','image/webp'].includes(file.type)) {
+    alert('Please upload a JPG, PNG, GIF, or WEBP image.');
+    input.value = ''; return;
+  }
+  if (file.size > 50 * 1024 * 1024) {
+    alert('File too large — maximum 50 MB.'); input.value = ''; return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('img-preview').src = e.target.result;
+    document.getElementById('img-preview-info').textContent =
+      file.name + '  ·  ' + fmtSize(file.size);
+    document.getElementById('img-preview-wrap').style.display = 'block';
+    document.getElementById('img-drop-zone').style.display    = 'none';
+  };
+  reader.readAsDataURL(file);
+
+  activeFileInput = input;
+  ensureRealInput(input);
+}
+
+// ── PDF preview ───────────────────────────────────────────────
+function previewPDF(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+    alert('Please upload a PDF file (.pdf).'); input.value = ''; return;
+  }
+  if (file.size > 50 * 1024 * 1024) {
+    alert('File too large — maximum 50 MB.'); input.value = ''; return;
+  }
+
+  document.getElementById('pdf-file-name').textContent = file.name;
+  document.getElementById('pdf-file-size').textContent = fmtSize(file.size);
+  document.getElementById('pdf-preview-frame').src     = URL.createObjectURL(file);
+  document.getElementById('pdf-preview-wrap').style.display = 'block';
+  document.getElementById('pdf-drop-zone').style.display    = 'none';
+
+  activeFileInput = input;
+  ensureRealInput(input);
+}
+
+// ── Create/sync the single hidden input Django will read ──────
+function ensureRealInput(sourceInput) {
+  // Remove any previous real input
+  const old = document.getElementById('real-file-input');
+  if (old) old.remove();
+
+  const real = document.createElement('input');
+  real.type     = 'file';
+  real.id       = 'real-file-input';
+  real.name     = 'attached_file';
+  real.style.display = 'none';
+
+  const dt = new DataTransfer();
+  dt.items.add(sourceInput.files[0]);
+  // Append to form so it submits
+  document.getElementById('uploadForm').appendChild(real);
+  // We can't directly assign DataTransfer to a hidden input's files in all browsers,
+  // so we keep sourceInput visible but rename it.
+  sourceInput.name = 'attached_file';  // Django reads this
+}
+
+// ── Clear a selection ─────────────────────────────────────────
+function clearFile(type) {
+  const input = document.getElementById(type + '-file-input');
+  input.name  = '';   // remove from submission
+  input.value = '';
+
+  if (type === 'image') {
+    document.getElementById('img-preview').src            = '';
+    document.getElementById('img-preview-wrap').style.display = 'none';
+    document.getElementById('img-drop-zone').style.display    = 'block';
+  } else {
+    document.getElementById('pdf-preview-frame').src         = '';
+    document.getElementById('pdf-preview-wrap').style.display = 'none';
+    document.getElementById('pdf-drop-zone').style.display   = 'block';
+  }
+
+  const real = document.getElementById('real-file-input');
+  if (real) real.remove();
+  activeFileInput = null;
+}
+
+// ── Before submit: disable inactive body fields ───────────────
+document.getElementById('uploadForm').addEventListener('submit', function() {
+  // Only the active body textarea submits
+  const bodies = {
+    text:  document.getElementById('body_text'),
+    image: document.getElementById('body_image'),
+    pdf:   document.getElementById('body_pdf'),
+  };
+  Object.entries(bodies).forEach(([m, el]) => {
+    if (m !== currentMode) el.name = '';   // exclude from POST
+  });
+});
+
+// ── Utility ───────────────────────────────────────────────────
+function fmtSize(bytes) {
+  if (bytes < 1024)         return bytes + ' B';
+  if (bytes < 1024 * 1024)  return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+}
+
+// Init
+setMode('text');
+</script>
 {% endblock %}

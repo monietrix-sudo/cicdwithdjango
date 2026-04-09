@@ -15,41 +15,86 @@
     <div>
       <h2>{{ record.title }}</h2>
       <div style="font-size:12px;color:var(--muted);">
-        {{ record.get_record_type_display|default:"Medical Record" }} · {{ record.uploaded_at|date:"D, M d Y" }}
-        {% if record.uploaded_by %} · Added by {{ record.uploaded_by.get_full_name }}{% endif %}
+        {{ record.get_record_type_display|default:"Medical Record" }}
+        · {{ record.uploaded_at|date:"D, M d Y" }}
+        {% if record.uploaded_by %} · {{ record.uploaded_by.get_full_name }}{% endif %}
       </div>
     </div>
   </div>
 
   <div class="card-body">
+
+    {# Text content #}
     {% if record.body %}
-    <div style="font-size:14px;line-height:1.7;white-space:pre-wrap;margin-bottom:16px;">{{ record.body }}</div>
+    <div style="font-size:14px;line-height:1.75;white-space:pre-wrap;margin-bottom:16px;">
+      {{ record.body }}
+    </div>
     {% endif %}
 
+    {# Attached file — inline viewer + conditional download #}
     {% if record.attached_file %}
-    <div style="margin-top:16px;padding:14px;background:#F7FAFC;border-radius:10px;
-                display:flex;align-items:center;gap:12px;">
-      <i class="fas fa-paperclip" style="color:var(--primary);font-size:18px;"></i>
-      <div style="flex:1;">
-        <div style="font-weight:600;font-size:14px;">Attached File</div>
-        <div style="font-size:12px;color:var(--muted);">{{ record.attached_file.name|default:"Document" }}</div>
+
+      {# PDF — render inline so patient can read without downloading #}
+      {% if record.file_type == 'pdf' %}
+      <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px;">
+        <div style="background:#F7FAFC;padding:8px 14px;font-size:12px;color:var(--muted);
+                    border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+          <i class="fas fa-file-pdf" style="color:#E53E3E;"></i>
+          PDF Document — scroll to read all pages
+        </div>
+        <iframe src="{{ record.attached_file.url }}"
+                style="width:100%;height:520px;border:none;"
+                title="{{ record.title }}"></iframe>
       </div>
-      <a href="{{ record.attached_file.url }}" target="_blank"
-         style="background:var(--primary);color:#fff;border-radius:8px;padding:8px 16px;
-                font-size:13px;font-weight:600;text-decoration:none;">
-        <i class="fas fa-download"></i> View
+
+      {# Image — display full size #}
+      {% elif record.file_type == 'image' %}
+      <div style="margin-bottom:12px;">
+        <img src="{{ record.attached_file.url }}"
+             alt="{{ record.title }}"
+             style="max-width:100%;border-radius:10px;border:1px solid var(--border);display:block;" />
+      </div>
+
+      {# Other file types — info bar only #}
+      {% else %}
+      <div style="padding:14px;background:#F7FAFC;border-radius:10px;margin-bottom:12px;
+                  display:flex;align-items:center;gap:12px;">
+        <i class="fas fa-paperclip" style="color:var(--primary);font-size:18px;"></i>
+        <div>
+          <div style="font-weight:600;font-size:14px;">Attached File</div>
+          <div style="font-size:12px;color:var(--muted);">{{ record.file_type|title }}</div>
+        </div>
+      </div>
+      {% endif %}
+
+      {# Download button — only when is_downloadable is ticked by the doctor/admin #}
+      {% if record.is_downloadable %}
+      <a href="{% url 'records:download' record.pk %}"
+         style="display:inline-flex;align-items:center;gap:8px;
+                background:var(--primary);color:#fff;border-radius:10px;
+                padding:9px 18px;font-size:13px;font-weight:700;text-decoration:none;">
+        <i class="fas fa-download"></i> Download {{ record.file_type|title|default:"File" }}
       </a>
-    </div>
+      {% else %}
+      <div style="display:inline-flex;align-items:center;gap:7px;
+                  background:#F7FAFC;border:1px solid var(--border);border-radius:10px;
+                  padding:8px 14px;font-size:12px;color:var(--muted);">
+        <i class="fas fa-lock"></i>
+        Download not enabled for this file. Ask your doctor if you need a copy.
+      </div>
+      {% endif %}
+
     {% endif %}
 
     {% if not record.body and not record.attached_file %}
     <p style="color:var(--muted);font-size:14px;">No content available for this record.</p>
     {% endif %}
+
   </div>
 </div>
 
 {% if record.version_number > 1 %}
-<div style="font-size:12px;color:var(--muted);text-align:center;">
+<div style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px;">
   Version {{ record.version_number }} · Last updated {{ record.updated_at|date:"M d, Y" }}
 </div>
 {% endif %}

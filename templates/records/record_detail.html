@@ -59,52 +59,57 @@
         <!-- File attachment viewer -->
         {% if record.attached_file %}
         <div style="{% if record.body %}border-top:1px solid var(--border);padding-top:20px;{% endif %}">
+
           {% if record.file_type == 'image' %}
-            <!-- Image viewer -->
             <img src="{{ record.attached_file.url }}"
                  alt="{{ record.title }}"
                  style="max-width:100%;border-radius:var(--radius-sm);box-shadow:var(--card-shadow);" />
-            <div style="margin-top:10px;">
-              <a href="{{ record.attached_file.url }}" download class="btn-abi-outline" style="font-size:13px;padding:7px 16px;">
-                <i class="fas fa-download"></i> Download Image
-              </a>
-            </div>
 
           {% elif record.file_type == 'pdf' %}
-            <!-- PDF viewer -->
             <div style="border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;">
               <iframe src="{{ record.attached_file.url }}"
                       style="width:100%;height:600px;border:none;"
                       title="{{ record.title }}"></iframe>
             </div>
-            <div style="margin-top:10px;">
-              <a href="{{ record.attached_file.url }}" download class="btn-abi-outline" style="font-size:13px;padding:7px 16px;">
-                <i class="fas fa-download"></i> Download PDF
-              </a>
-            </div>
 
           {% elif record.file_type == 'video' %}
-            <!-- Video player -->
             <video controls style="width:100%;border-radius:var(--radius-sm);background:#000;" preload="metadata">
               <source src="{{ record.attached_file.url }}" />
               Your browser does not support video playback.
             </video>
-            <div style="margin-top:10px;">
-              <a href="{{ record.attached_file.url }}" download class="btn-abi-outline" style="font-size:13px;padding:7px 16px;">
-                <i class="fas fa-download"></i> Download Video
-              </a>
-            </div>
 
           {% else %}
-            <!-- Generic document download -->
             <div style="padding:32px;text-align:center;background:var(--bg-page);border-radius:var(--radius-sm);border:2px dashed var(--border);">
               <i class="fas fa-file-alt" style="font-size:48px;color:var(--primary);opacity:0.5;display:block;margin-bottom:12px;"></i>
               <div style="font-weight:600;margin-bottom:12px;">{{ record.attached_file.name|cut:"records/" }}</div>
-              <a href="{{ record.attached_file.url }}" download class="btn-abi-primary">
-                <i class="fas fa-download"></i> Download Document
-              </a>
             </div>
           {% endif %}
+
+          {# Download button — shown only when permission allows #}
+          <div style="margin-top:12px;">
+            {% if can_download %}
+            <a href="{% url 'records:download' record.pk %}"
+               style="display:inline-flex;align-items:center;gap:8px;
+                      background:var(--primary);color:#fff;border-radius:10px;
+                      padding:9px 18px;font-size:13px;font-weight:700;text-decoration:none;">
+              <i class="fas fa-download"></i>
+              Download {{ record.file_type|title|default:"File" }}
+            </a>
+            {% elif record.attached_file %}
+            <div style="display:inline-flex;align-items:center;gap:7px;
+                        background:#F7FAFC;border:1px solid var(--border);border-radius:10px;
+                        padding:8px 14px;font-size:12px;color:var(--text-muted);">
+              <i class="fas fa-lock"></i>
+              Download disabled for this record.
+              {% if user.is_admin_staff %}
+              <a href="{% url 'records:edit' record.pk %}" style="color:var(--primary);font-weight:600;margin-left:4px;">
+                Enable in Edit →
+              </a>
+              {% endif %}
+            </div>
+            {% endif %}
+          </div>
+
         </div>
         {% endif %}
 
