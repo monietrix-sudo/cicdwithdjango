@@ -52,7 +52,7 @@ class MedicalRecord(models.Model):
     #         "If ticked, authorised users can download the attached file. "
     #         "Admin and the uploading doctor can always download regardless of this setting."
     #     )
-    )
+    # )
 
     # Soft delete
     is_deleted = models.BooleanField(default=False)
