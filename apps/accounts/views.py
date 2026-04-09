@@ -245,7 +245,7 @@ def create_patient_account_view(request, hospital_number):
     suggested_password = _generate_temp_password()
 
     if request.method == 'POST':
-        temp_password = request.POST.get('temp_password', '').strip()
+        temp_password = request.POST.get('password1', '').strip()
         send_email    = 'send_email' in request.POST
         print_slip    = 'print_slip' in request.POST
 
