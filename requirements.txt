@@ -1,49 +1,38 @@
 # AbiCare Hospital EHR — Python Dependencies
-# Install with: pip install -r requirements.txt
 
-# ── Core Django ───────────────────────────────────────────────────
+# Core Django
 Django==5.0.6
 
-# ── Database drivers (install only the one you use) ───────────────
-psycopg2-binary==2.9.9       # PostgreSQL driver (recommended)
-# mysqlclient==2.2.4          # MySQL driver (uncomment if using MySQL)
+# Database
+psycopg2-binary==2.9.9
 
-# ── Static file serving ────────────────────────────────────────────
+# Static files
 whitenoise==6.7.0
 
-# ── Admin theme ────────────────────────────────────────────────────
-django-jazzmin==3.0.0
+# Admin UI
+django-jazzmin==3.0.4
 
-# ── Forms ─────────────────────────────────────────────────────────
+# Forms
 django-crispy-forms==2.3
 crispy-bootstrap5==2024.2
 django-widget-tweaks==1.5.0
 
-# ── Image handling ─────────────────────────────────────────────────
+# Images
 Pillow==10.3.0
 
-# ── Environment variables ──────────────────────────────────────────
+# Environment variables
 python-decouple==3.8
-
-# ── Production server ─────────────────────────────────────────────
-gunicorn==22.0.0
-twilio==9.0.4          # WhatsApp notifications (optional)
-pytesseract==0.3.10      # OCR text extraction (requires Tesseract installed separately)
-pdf2image==1.17.0        # Convert PDF pages to images for OCR
-
-openpyxl==3.1.2          # Excel import/export
 python-dotenv==1.0.1
 
-openpyxl==3.1.2          # Excel import/export
- 
-# ── Object Storage (uncomment the one you need) ───────────────────────
-# For Railway / AWS S3 / Cloudflare R2 / Backblaze B2:
+# Server
+gunicorn==22.0.0
+
+# Utilities
+twilio==9.0.4
+pytesseract==0.3.10
+pdf2image==1.17.0
+openpyxl==3.1.2
+
+# Storage
 django-storages[s3]==1.14.3
 boto3==1.34.0
- 
-# For Azure Blob Storage (uncomment if using Azure):
-# azure-storage-blob==12.19.0
-# azure-identity==1.16.0
- 
-# For Google Cloud Storage (uncomment if using GCS):
-# google-cloud-storage==2.16.0
