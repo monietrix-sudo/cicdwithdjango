@@ -18,12 +18,15 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
 
           script: |
-            cd ~/var/www/cicdwithdjango
+                cd ~/var/www/cicdwithdjango
 
-            git pull origin main
+                git pull origin main
 
-            source venv/bin/activate
+                source venv/bin/activate
 
-            pip install -r requirements.txt
+                which python
+                which pip
 
-            python manage.py migrate
+                pip install -r requirements.txt
+
+                python manage.py migrate
